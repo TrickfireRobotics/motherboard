@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pico/stdio_usb.h>
-//#include "ff_stdio.h"
-
 
 //FreeRTOS
 #include "FreeRTOS.h"
