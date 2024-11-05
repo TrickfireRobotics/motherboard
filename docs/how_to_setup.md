@@ -10,12 +10,12 @@ Clone the repository in a Linux-based computer. If on Windows, use WSL.
 ## Step 2
 Execute the following command while in the project folder
 
-`git submodule update --init`
+`git submodule update --init --progress`
 
 ## Step 3
 Go into the `pico-sdk` director and execute the following command.
 
-`git submodule update --init`
+`git submodule update --init --progress`
 
 Note: Steps 2 and 3 will take a while. Grab a cup of tea.
 
