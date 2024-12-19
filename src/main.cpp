@@ -15,7 +15,7 @@ TaskHandle_t usbOutTaskHandle;
 
 QueueHandle_t dataToHostQueue;
 
-void usbDataIn(void *param)
+void exampleTask(void *param)
 {
     while (!stdio_usb_connected())
     {
@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
         tenSecDebugLED();
     #endif
 
-    xTaskCreate(usbDataIn, "USB_DATA_IN", configMINIMAL_STACK_SIZE * 2, NULL, 1, &usbInTaskHandle);
+    xTaskCreate(exampleTask, "USB_DATA_IN", configMINIMAL_STACK_SIZE * 2, NULL, 1, &usbInTaskHandle);
 
     vTaskStartScheduler();
 

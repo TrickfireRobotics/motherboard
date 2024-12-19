@@ -13,7 +13,7 @@ Execute the following command while in the project folder
 `git submodule update --init --progress`
 
 ## Step 3
-Go into the `pico-sdk` director and execute the following command.
+Go into the `pico-sdk` directory and execute the following command.
 
 `git submodule update --init --progress`
 
