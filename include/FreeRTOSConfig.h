@@ -40,17 +40,30 @@
  * See http://www.freertos.org/a00110.html
  *----------------------------------------------------------*/
 
+/* Use Pico SDK ISR handlers */
+#define vPortSVCHandler         isr_svcall
+#define xPortPendSVHandler      isr_pendsv
+#define xPortSysTickHandler     isr_systick
+
 /* Scheduler Related */
 #define configUSE_PREEMPTION                    1
+#define configUSE_PORT_OPTIMISED_TASK_SELECTION 0
 #define configUSE_TICKLESS_IDLE                 0
 #define configUSE_IDLE_HOOK                     0
 #define configUSE_TICK_HOOK                     0
-#define configTICK_RATE_HZ                      ( ( TickType_t ) 1000 )
-#define configMAX_PRIORITIES                    32
+#define configCPU_CLOCK_HZ                      133000000
+#define configTICK_RATE_HZ                      100
+#define configMAX_TASK_NAME_LEN                 16 // 16 chars
+// #define configTICK_RATE_HZ                      ( ( TickType_t ) 1000 )
+#define configMAX_PRIORITIES                    5
 #define configMINIMAL_STACK_SIZE                ( configSTACK_DEPTH_TYPE ) 512 
+//#define configMINIMAL_STACK_SIZE                128
 #define configUSE_16_BIT_TICKS                  0
 
 #define configIDLE_SHOULD_YIELD                 1
+
+#define configUSE_TASK_NOTIFICATIONS            1
+#define configTASK_NOTIFICATION_ARRAY_ENTRIES   3
 
 /* Synchronization Related */
 #define configUSE_MUTEXES                       1
@@ -73,6 +86,7 @@
 #define configSUPPORT_STATIC_ALLOCATION         0
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
 #define configTOTAL_HEAP_SIZE                   (128*1024)
+//#define configTOTAL_HEAP_SIZE                   (8 * 1024) // 8 KB
 #define configAPPLICATION_ALLOCATED_HEAP        0
 
 /* Hook function related definitions. */
