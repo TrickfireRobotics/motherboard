@@ -31,7 +31,7 @@ void exampleTask(void *param)
 
     while (true)
     {
-        printf("hello from task\n");
+        printf("hello from example task\n");
         sleep_ms(1000);
     }
 }
@@ -39,24 +39,44 @@ void exampleTask(void *param)
 // usb task
 void usbTask(void *params)
 {
+    while (true)
+    {
+        printf("hello from usbTask\n");
+        sleep_ms(1000);
+    }
     // TODO: add definition
 }
 
 // light task
 void lightTask(void *params)
 {
+    while (true)
+    {
+        printf("hello from lightTask\n");
+        sleep_ms(1000);
+    }
     // TODO: add definition
 }
 
 // stepper motor task
 void stepperMotorTask(void *params)
 {
+    while (true)
+    {
+        printf("hello from stepperMotorTask\n");
+        sleep_ms(1000);
+    }
     // TODO: add definition
 }
 
 // servo task
 void pwmServoTask(void *params)
 {
+    while (true)
+    {
+        printf("hello from pwmServoTask\n");
+        sleep_ms(1000);
+    }
     // TODO: add definition
 }
 
