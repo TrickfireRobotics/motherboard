@@ -9,6 +9,72 @@
 #define EXPANDER3_ADDR 0x22
 #define EXPANDER4_ADDR 0x23
 
+// ===== Stepper Motors, Servos, and LED pins
+#define STEPPER_1_DIR           20
+#define STEPPER_1_STEP          19
+#define STEPPER_1_SLEEP         18
+#define STEPPER_1_RST           17
+#define STEPPER_1_EN            13
+#define STEPPER_1_MS1           14
+#define STEPPER_1_MS2           15
+#define STEPPER_1_MS3           16
+
+#define STEPPER_2_DIR           11
+#define STEPPER_2_STEP          10
+#define STEPPER_2_SLEEP         9
+#define STEPPER_2_RST           8
+#define STEPPER_2_EN            4
+#define STEPPER_2_MS1           5
+#define STEPPER_2_MS2           6
+#define STEPPER_2_MS3           7
+
+#define STEPPER_3_DIR           20
+#define STEPPER_3_STEP          19
+#define STEPPER_3_SLEEP         18
+#define STEPPER_3_RST           17
+#define STEPPER_3_EN            13
+#define STEPPER_3_MS1           14
+#define STEPPER_3_MS2           15
+#define STEPPER_3_MS3           16
+
+#define STEPPER_4_DIR           11
+#define STEPPER_4_STEP          10
+#define STEPPER_4_SLEEP         9
+#define STEPPER_4_RST           8
+#define STEPPER_4_EN            4
+#define STEPPER_4_MS1           5
+#define STEPPER_4_MS2           6
+#define STEPPER_4_MS3           7
+
+#define STEPPER_5_DIR           20
+#define STEPPER_5_STEP          19
+#define STEPPER_5_SLEEP         18
+#define STEPPER_5_RST           17
+#define STEPPER_5_EN            13
+#define STEPPER_5_MS1           14
+#define STEPPER_5_MS2           15
+#define STEPPER_5_MS3           16
+
+#define STEPPER_6_DIR           11
+#define STEPPER_6_STEP          10
+#define STEPPER_6_SLEEP         9
+#define STEPPER_6_RST           8
+#define STEPPER_6_EN            4
+#define STEPPER_6_MS1           5
+#define STEPPER_6_MS2           6
+#define STEPPER_6_MS3           7
+
+#define PWM1                    11
+#define PWM2                    10
+#define PWM3                    9
+#define PWM4                    8
+#define PWM5                    7
+#define PWM6                    6
+
+#define LED_RED                 20
+#define LED_BLUE                19
+#define LED_GREEN               18
+
 // ===== Task priorities =====
 // smaller number = lower priority
 // idle task = 0 priority
@@ -47,6 +113,6 @@ void lightTask(void *params);
 void stepperMotorTask(void *params);
 void pwmServoTask(void *params);
 
-void i2cSetPin(uint8_t expanderAddress, uint8_t pinNumber);
+void i2cSetPin(uint8_t expanderAddress, uint8_t pinNumber, bool value);
 
 #endif /* MAIN_H */
