@@ -6,8 +6,8 @@
 
 // FreeRTOS
 #include "FreeRTOS.h"
+#include "semphr.h"
 #include "task.h"
-#include "queue.h"
 
 // mutex for each motors and servos
 SemaphoreHandle_t stepperMutexes[NUM_STEPPERS];
@@ -42,8 +42,7 @@ void exampleTask(void *param)
     // debug for checking stack size
     // then set the stack size to the appropriate size:
     // see: https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/04-uxTaskGetStackHighWaterMark
-    printf("high water mark (words): ");
-    printf(uxTaskGetStackHighWaterMark(NULL));
+    printf("High water mark (words): %lu\n", uxTaskGetStackHighWaterMark(NULL));
 }
 
 // usb task
