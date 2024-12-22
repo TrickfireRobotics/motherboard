@@ -183,7 +183,6 @@ void stepperMotorTask(void *params)
         }
     }
 }
-}
 
 // servo task
 void pwmServoTask(void *params)
@@ -212,7 +211,7 @@ void pwmServoTask(void *params)
 
                         // reset the start time
                         servos[i].startTime = xTaskGetTickCount();
-                        servos.isOn = false;
+                        servos[i].isOn = false;
                     }
                     // else if it's off, check against the off period
                     else if (!servos[i].isOn && ((xTaskGetTickCount() - servos[i].startTime) >= servos[i].offTime))
@@ -222,7 +221,7 @@ void pwmServoTask(void *params)
 
                         // reset the start time
                         servos[i].startTime = xTaskGetTickCount();
-                        servos.isOn = true;
+                        servos[i].isOn = true;
                     }
 
                     // return the mutex
@@ -288,6 +287,14 @@ int main(int argc, char **argv)
         if (servoMutexes[i] == NULL)
             printf("Failed to create mutex for servo %d\n", i + 1);
     }
+
+    // assign the expander address to each stepper motor
+    stepperMotors[0].expanderAddr = EXPANDER1_ADDR;
+    stepperMotors[1].expanderAddr = EXPANDER1_ADDR;
+    stepperMotors[2].expanderAddr = EXPANDER2_ADDR;
+    stepperMotors[3].expanderAddr = EXPANDER2_ADDR;
+    stepperMotors[4].expanderAddr = EXPANDER3_ADDR;
+    stepperMotors[5].expanderAddr = EXPANDER3_ADDR;
 
     // example task
     // note that the stack size is in words, NOT bytes
