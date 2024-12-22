@@ -24,6 +24,10 @@ TaskHandle_t pwmServoTaskHandle;
 
 QueueHandle_t dataToHostQueue;
 
+// declare stepper motors and servos
+StepperMotor stepperMotors[NUM_STEPPERS];
+Servo servos[NUM_SERVOS];
+
 // example task
 void exampleTask(void *param)
 {
@@ -72,21 +76,161 @@ void stepperMotorTask(void *params)
 {
     while (true)
     {
-        printf("hello from stepperMotorTask\n");
-        sleep_ms(1000);
+        // go through each stepper motor
+        for (uint8_t i = 0; i < NUM_STEPPERS; ++i)
+        {
+            // attempt to obtain the mutex
+            if (stepperMutexes[i] != NULL)
+            {
+                // wait for 10 tick, if can't move on to next servo
+                if (xSemaphoreTake(stepperMutexes[i], (TickType_t)10) == pdTRUE)
+                {
+                    // check for enable, sleep, and reset first
+                    if (stepperMotors[i].isEnableDirty)
+                    {
+                        // reset the dirty bit
+                        stepperMotors[i].isEnableDirty = false;
+
+                        // EN active low
+                        i2cSetPin(stepperMotors[i].expanderAddr, stepperEnPins[i], !stepperMotors[i].isEnable);
+                    }
+                    else if (stepperMotors[i].isSleepDirty)
+                    {
+                        // reset the dirty bit
+                        stepperMotors[i].isSleepDirty = false;
+
+                        // SLP active low
+                        i2cSetPin(stepperMotors[i].expanderAddr, stepperSleepPins[i], !stepperMotors[i].isSleep);
+                    }
+                    else if (stepperMotors[i].isResetDirty)
+                    {
+                        // reset the dirty bit
+                        stepperMotors[i].isResetDirty = false;
+
+                        // TODO: pull low into reset state, unless pull high again
+                        // double check to see if the cmd to turn high comes from
+                        // the uart or do we just pull it low for a certain time
+                        // and pull it back high
+                        i2cSetPin(stepperMotors[i].expanderAddr, stepperRstPins[i], !stepperMotors[i].isReset);
+
+                        // reset the position var as well
+                        if (stepperMotors[i].isReset)
+                        {
+                            stepperMotors[i].currentPosition = 0;
+                            stepperMotors[i].targetPosition = 0;
+                        }
+                    }
+
+                    // if disable, sleep, and reset, return the mutex and continue the loop
+                    if (!stepperMotors[i].isEnable || stepperMotors[i].isSleep || stepperMotors[i].isReset)
+                    {
+                        xSemaphoreGive(stepperMutexes[i]);
+                        continue;
+                    }
+
+                    // for other cases:
+                    // check if micro-step resolution has changed
+                    if (stepperMotors[i].isMsDirty)
+                    {
+                        // reset the dirty bit
+                        stepperMotors[i].isMsDirty = false;
+
+                        // send cmd to ms pins
+                        i2cSetPin(stepperMotors[i].expanderAddr, stepperMs1Pins[i], stepperMotors[i].MS1);
+                        i2cSetPin(stepperMotors[i].expanderAddr, stepperMs2Pins[i], stepperMotors[i].MS2);
+                        i2cSetPin(stepperMotors[i].expanderAddr, stepperMs3Pins[i], stepperMotors[i].MS3);
+                    }
+
+                    // check if direction has changed
+                    if (stepperMotors[i].isDirDirty)
+                    {
+                        // reset the firty bit
+                        stepperMotors[i].isDirDirty = false;
+
+                        // send cmd to change direction
+                        i2cSetPin(stepperMotors[i].expanderAddr, stepperDirPins[i], stepperMotors[i].dir);
+                    }
+
+                    /*
+                        If current pos < target pos
+                        check step time & perform the step
+                        else continue the loop
+                    */
+                    if (stepperMotors[i].currentPosition < stepperMotors[i].targetPosition &&
+                        ((xTaskGetTickCount() - stepperMotors[i].lastStepTime) >= stepperMotors[i].stepInterval))
+                    {
+                        // increase the step count
+                        ++stepperMotors[i].currentPosition;
+
+                        // return the mutex
+                        xSemaphoreGive(stepperMutexes[i]);
+
+                        // send step cmd
+                        i2cSetPin(stepperMotors[i].expanderAddr, stepperStepPins[i], 1);
+
+                        // minimum pulse width of A4988 is 1 us for both high and low
+                        sleep_us(1);
+
+                        i2cSetPin(stepperMotors[i].expanderAddr, stepperStepPins[i], 0);
+                    }
+                    // for other cases, remember to return the mutexes as well
+                    else
+                    {
+                        xSemaphoreGive(stepperMutexes[i]);
+                    }
+                }
+            }
+        }
     }
-    // TODO: add definition
+}
 }
 
 // servo task
 void pwmServoTask(void *params)
 {
+    /*
+        For each servo:
+        Attempt to take the semaphore
+            - not succeed -> block wait for 10 ms -> move on
+            - succeed -> check time, send cmd, release mutex
+    */
     while (true)
     {
-        printf("hello from pwmServoTask\n");
-        sleep_ms(1000);
+        // go through each servo
+        for (uint8_t i = 0; i < NUM_SERVOS; ++i)
+        {
+            if (servoMutexes[i] != NULL)
+            {
+                // wait for 10 tick, if can't move on to next servo
+                if (xSemaphoreTake(servoMutexes[i], (TickType_t)10) == pdTRUE)
+                {
+                    // if servo is on, checks against the on period
+                    if (servos[i].isOn && ((xTaskGetTickCount() - servos[i].startTime) >= servos[i].onTime))
+                    {
+                        // turn it off
+                        i2cSetPin(EXPANDER4_ADDR, pwmPins[i], 0);
+
+                        // reset the start time
+                        servos[i].startTime = xTaskGetTickCount();
+                        servos.isOn = false;
+                    }
+                    // else if it's off, check against the off period
+                    else if (!servos[i].isOn && ((xTaskGetTickCount() - servos[i].startTime) >= servos[i].offTime))
+                    {
+                        // turn it on
+                        i2cSetPin(EXPANDER4_ADDR, pwmPins[i], 1);
+
+                        // reset the start time
+                        servos[i].startTime = xTaskGetTickCount();
+                        servos.isOn = true;
+                    }
+
+                    // return the mutex
+                    xSemaphoreGive(servoMutexes[i]);
+                }
+            }
+        }
     }
-    // TODO: add definition
 }
 
 // for sending i2c cmd
