@@ -9,6 +9,10 @@
 #include "task.h"
 #include "queue.h"
 
+// mutex for each motors and servos
+SemaphoreHandle_t stepperMutexes[NUM_STEPPERS];
+SemaphoreHandle_t servoMutexes[NUM_SERVOS];
+
 // handle for each task
 TaskHandle_t usbInTaskHandle;
 TaskHandle_t usbOutTaskHandle;
@@ -34,6 +38,12 @@ void exampleTask(void *param)
         printf("hello from example task\n");
         sleep_ms(1000);
     }
+
+    // debug for checking stack size
+    // then set the stack size to the appropriate size:
+    // see: https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/04-uxTaskGetStackHighWaterMark
+    printf("high water mark (words): ");
+    printf(uxTaskGetStackHighWaterMark(NULL));
 }
 
 // usb task
@@ -81,7 +91,7 @@ void pwmServoTask(void *params)
 }
 
 // for sending i2c cmd
-void i2cSetPin(uint8_t expanderAddress, uint8_t pinNumber)
+void i2cSetPin(uint8_t expanderAddress, uint8_t pinNumber, bool value)
 {
     // TODO: add definition
 }
@@ -114,6 +124,27 @@ int main(int argc, char **argv)
 #if (DEBUG)
     tenSecDebugLED();
 #endif
+
+    // creates mutexes
+    // these uses RAM space (dynamic mem). If constraint is needed, use static mutex.
+    // usage example, see: https://www.freertos.org/Documentation/02-Kernel/04-API-references/10-Semaphore-and-Mutexes/06-xSemaphoreCreateMutex
+    for (uint8_t i = 0; i < NUM_STEPPERS; ++i)
+    {
+        stepperMutexes[i] = xSemaphoreCreateMutex();
+
+        // check if success
+        if (stepperMutexes[i] == NULL)
+            printf("Failed to create mutex for stepper %d\n", i + 1);
+    }
+
+    for (uint8_t i = 0; i < NUM_SERVOS; ++i)
+    {
+        servoMutexes[i] = xSemaphoreCreateMutex();
+
+        // check if success
+        if (servoMutexes[i] == NULL)
+            printf("Failed to create mutex for servo %d\n", i + 1);
+    }
 
     // example task
     // note that the stack size is in words, NOT bytes

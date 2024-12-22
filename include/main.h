@@ -10,6 +10,9 @@
 #define EXPANDER4_ADDR 0x23
 
 // ===== Stepper Motors, Servos, and LED pins
+#define NUM_STEPPERS            6
+#define NUM_SERVOS              6
+
 #define STEPPER_1_DIR           20
 #define STEPPER_1_STEP          19
 #define STEPPER_1_SLEEP         18
