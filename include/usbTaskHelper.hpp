@@ -1,8 +1,6 @@
 #ifndef USB_TASK_HELPER_H
 #define USB_TASK_HELPER_H
 
-#include "main.h"
-
 enum CommandType{
     STEPPER_GEN = 0,
     STEPPER_CONF = 1,

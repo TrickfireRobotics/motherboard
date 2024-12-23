@@ -25,8 +25,20 @@ TaskHandle_t pwmServoTaskHandle;
 
 QueueHandle_t dataToHostQueue;
 
-// Data for stepper and servo(pwm) motors
+// Global data for stepper and servo(pwm) motors
 StepperMotor stepper0;
+StepperMotor stepper1;
+StepperMotor stepper2;
+StepperMotor stepper3;
+StepperMotor stepper4;
+StepperMotor stepper5;
+
+Servo servo0;
+Servo servo1;
+Servo servo2;
+Servo servo3;
+Servo servo4;
+Servo servo5;
 
 // example task
 void exampleTask(void *param)
@@ -152,6 +164,18 @@ void onBootInit()
     gpio_set_dir(25, GPIO_OUT);
 
     stepper0 = {false, false, false, false, false, false, 0, 0, 0, 0, 0, 0, 0};
+    stepper1 = {false, false, false, false, false, false, 1, 0, 0, 0, 0, 0, 0};
+    stepper2 = {false, false, false, false, false, false, 2, 0, 0, 0, 0, 0, 0};
+    stepper3 = {false, false, false, false, false, false, 3, 0, 0, 0, 0, 0, 0};
+    stepper4 = {false, false, false, false, false, false, 4, 0, 0, 0, 0, 0, 0};
+    stepper5 = {false, false, false, false, false, false, 5, 0, 0, 0, 0, 0, 0};
+
+    servo0 = {0,0,0};
+    servo1 = {0,0,1};
+    servo2 = {0,0,2};
+    servo3 = {0,0,3};
+    servo4 = {0,0,4};
+    servo5 = {0,0,5};
 }
 
 int main(int argc, char **argv)
