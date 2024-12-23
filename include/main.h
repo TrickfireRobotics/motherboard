@@ -113,20 +113,7 @@ typedef struct {
 } Servo;
 
 
-// ===== Declare global data =====
-// extern StepperMotor stepper0;
-// extern StepperMotor stepper1;
-// extern StepperMotor stepper2;
-// extern StepperMotor stepper3;
-// extern StepperMotor stepper4;
-// extern StepperMotor stepper5;
 
-// extern Servo servo0;
-// extern Servo servo1;
-// extern Servo servo2;
-// extern Servo servo3;
-// extern Servo servo4;
-// extern Servo servo5;
 
 // ===== Function prototypes =====
 void usbTask(void *params);

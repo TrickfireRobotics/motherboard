@@ -4,6 +4,7 @@
 #include <pico/stdio_usb.h>
 #include "main.h"
 #include "usbTaskHelper.hpp"
+#include <tusb.h>
 
 // FreeRTOS
 #include "FreeRTOS.h"
@@ -45,14 +46,14 @@ void exampleTask(void *param)
 {
     while (!stdio_usb_connected())
     {
-        sleep_ms(100);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     printf("stdio_usb_connected()\n");
 
     while (true)
     {
         printf("hello from example task\n");
-        sleep_ms(1000);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 
     // debug for checking stack size
@@ -72,32 +73,43 @@ void usbTask(void *params)
 {
     while (true)
     {
+        if (!tud_cdc_available()) {
+            vTaskDelay(50 / portTICK_PERIOD_MS);
+            continue;
+        }
+
         char inputBuffer[MAX_USB_INPUT_BUFFER_CHARS];
 
         // The pico-sdk defines what "stdin" means - in this case it is the usb uart CDC
         // Specifically, take a look at the CMakeLists.txt "pico_enable_stdio_usb"
         // https://cec-code-lab.aps.edu/robotics/resources/pico-c-api/group__pico__stdio.html 
-        fgets(inputBuffer, sizeof(MAX_USB_INPUT_BUFFER_CHARS), stdin);
+        fgets(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS, stdin);
 
         CommandType commandID = getCommandTypeRaw(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
 
+        printf("RAW DATA: %s\n", inputBuffer);
+
         switch(commandID){
             case CommandType::STEPPER_GEN:
-
+                updateStepperGeneral(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
                 break;
             case CommandType::STEPPER_CONF:
-
+                updateStepperConfig(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
                 break;
             case CommandType::STEPPER_POWER:
-
+                updateStepperPower(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
                 break;
             case CommandType::PWM:
-
+                updateStepperPWM(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
                 break;
             case CommandType::LIGHT:
-
+                updateStepperLIGHT(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
                 break;
+            default:
+                printf("UNKOWN COMMAND");
         }
+
+        tud_cdc_read_flush();
 
 
     }
@@ -109,8 +121,8 @@ void lightTask(void *params)
 {
     while (true)
     {
-        printf("hello from lightTask\n");
-        sleep_ms(1000);
+        // printf("hello from lightTask\n");
+        // sleep_ms(1000);
     }
     // TODO: add definition
 }
@@ -120,8 +132,8 @@ void stepperMotorTask(void *params)
 {
     while (true)
     {
-        printf("hello from stepperMotorTask\n");
-        sleep_ms(1000);
+        // printf("hello from stepperMotorTask\n");
+        // sleep_ms(1000);
     }
     // TODO: add definition
 }
@@ -131,8 +143,8 @@ void pwmServoTask(void *params)
 {
     while (true)
     {
-        printf("hello from pwmServoTask\n");
-        sleep_ms(1000);
+        // printf("hello from pwmServoTask\n");
+        // sleep_ms(1000);
     }
     // TODO: add definition
 }
