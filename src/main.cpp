@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <pico/stdio_usb.h>
 #include "main.h"
+#include "usbTaskHelper.hpp"
 
 // FreeRTOS
 #include "FreeRTOS.h"
@@ -23,6 +24,9 @@ TaskHandle_t stepperMotorTaskHandle;
 TaskHandle_t pwmServoTaskHandle;
 
 QueueHandle_t dataToHostQueue;
+
+// Data for stepper and servo(pwm) motors
+StepperMotor stepper0;
 
 // example task
 void exampleTask(void *param)
@@ -45,15 +49,47 @@ void exampleTask(void *param)
     printf("High water mark (words): %lu\n", uxTaskGetStackHighWaterMark(NULL));
 }
 
-// usb task
+/**
+ * The usbTask handles the following:
+ *   1) Reading data in from the USB UART
+ *   2) Parsing this data into established commands
+ *   3) Updating the global data associated with the command
+ * 
+ */
 void usbTask(void *params)
 {
     while (true)
     {
-        printf("hello from usbTask\n");
-        sleep_ms(1000);
+        char inputBuffer[MAX_USB_INPUT_BUFFER_CHARS];
+
+        // The pico-sdk defines what "stdin" means - in this case it is the usb uart CDC
+        // Specifically, take a look at the CMakeLists.txt "pico_enable_stdio_usb"
+        // https://cec-code-lab.aps.edu/robotics/resources/pico-c-api/group__pico__stdio.html 
+        fgets(inputBuffer, sizeof(MAX_USB_INPUT_BUFFER_CHARS), stdin);
+
+        CommandType commandID = getCommandTypeRaw(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
+
+        switch(commandID){
+            case CommandType::STEPPER_GEN:
+
+                break;
+            case CommandType::STEPPER_CONF:
+
+                break;
+            case CommandType::STEPPER_POWER:
+
+                break;
+            case CommandType::PWM:
+
+                break;
+            case CommandType::LIGHT:
+
+                break;
+        }
+
+
     }
-    // TODO: add definition
+    
 }
 
 // light task
@@ -114,6 +150,8 @@ void onBootInit()
     // This is the LED
     gpio_init(25);
     gpio_set_dir(25, GPIO_OUT);
+
+    stepper0 = {false, false, false, false, false, false, 0, 0, 0, 0, 0, 0, 0};
 }
 
 int main(int argc, char **argv)
