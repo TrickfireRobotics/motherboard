@@ -78,6 +78,88 @@
 #define LED_BLUE                19
 #define LED_GREEN               18
 
+// ===== group into const for easy access =====
+const uint8_t stepperDirPins[NUM_STEPPERS] = {
+    STEPPER_1_DIR,
+    STEPPER_2_DIR,
+    STEPPER_3_DIR,
+    STEPPER_4_DIR,
+    STEPPER_5_DIR,
+    STEPPER_6_DIR
+};
+
+const uint8_t stepperStepPins[NUM_STEPPERS] = {
+    STEPPER_1_STEP,
+    STEPPER_2_STEP,
+    STEPPER_3_STEP,
+    STEPPER_4_STEP,
+    STEPPER_5_STEP,
+    STEPPER_6_STEP
+};
+
+const uint8_t stepperSleepPins[NUM_STEPPERS] = {
+    STEPPER_1_SLEEP,
+    STEPPER_2_SLEEP,
+    STEPPER_3_SLEEP,
+    STEPPER_4_SLEEP,
+    STEPPER_5_SLEEP,
+    STEPPER_6_SLEEP
+};
+
+const uint8_t stepperRstPins[NUM_STEPPERS] = {
+    STEPPER_1_RST,
+    STEPPER_2_RST,
+    STEPPER_3_RST,
+    STEPPER_4_RST,
+    STEPPER_5_RST,
+    STEPPER_6_RST
+};
+
+const uint8_t stepperEnPins[NUM_STEPPERS] = {
+    STEPPER_1_EN,
+    STEPPER_2_EN,
+    STEPPER_3_EN,
+    STEPPER_4_EN,
+    STEPPER_5_EN,
+    STEPPER_6_EN
+};
+
+const uint8_t stepperMs1Pins[NUM_STEPPERS] = {
+    STEPPER_1_MS1,
+    STEPPER_2_MS1,
+    STEPPER_3_MS1,
+    STEPPER_4_MS1,
+    STEPPER_5_MS1,
+    STEPPER_6_MS1
+};
+
+const uint8_t stepperMs2Pins[NUM_STEPPERS] = {
+    STEPPER_1_MS2,
+    STEPPER_2_MS2,
+    STEPPER_3_MS2,
+    STEPPER_4_MS2,
+    STEPPER_5_MS2,
+    STEPPER_6_MS2
+};
+
+const uint8_t stepperMs3Pins[NUM_STEPPERS] = {
+    STEPPER_1_MS3,
+    STEPPER_2_MS3,
+    STEPPER_3_MS3,
+    STEPPER_4_MS3,
+    STEPPER_5_MS3,
+    STEPPER_6_MS3
+};
+
+const uint8_t pwmPins[NUM_SERVOS] = {
+    PWM1,
+    PWM2,
+    PWM3,
+    PWM4,
+    PWM5,
+    PWM6
+};
+
 // ===== Task priorities =====
 // smaller number = lower priority
 // idle task = 0 priority
@@ -94,19 +176,26 @@ typedef struct {
     bool isEnableDirty;
     bool isSleepDirty;
     bool isResetDirty;
-    uint8_t port;
+    bool isMsDirty;
+    bool isDirDirty;
+    uint8_t expanderAddr;
     uint8_t MS1;
     uint8_t MS2;
     uint8_t MS3;
-    uint16_t startTime;
-    float velocity;
-    float position;
+    uint8_t dir;
+    uint16_t currentPosition;
+    uint16_t targetPosition;
+    uint32_t stepInterval;  // time unit = ms? us?
+    uint32_t lastStepTime;  // time unit = ms? us?
 } StepperMotor;
 
+// time unit = ms? us?
 typedef struct {
-    uint16_t startTime;
-    uint16_t onTime;
-    uint8_t port;
+    // uint8_t port;
+    bool isOn;
+    uint32_t startTime;
+    uint32_t onTime;
+    uint32_t offTime;
 } Servo;
 
 

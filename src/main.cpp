@@ -24,6 +24,10 @@ TaskHandle_t pwmServoTaskHandle;
 
 QueueHandle_t dataToHostQueue;
 
+// declare stepper motors and servos
+StepperMotor stepperMotors[NUM_STEPPERS];
+Servo servos[NUM_SERVOS];
+
 // example task
 void exampleTask(void *param)
 {
@@ -144,6 +148,14 @@ int main(int argc, char **argv)
         if (servoMutexes[i] == NULL)
             printf("Failed to create mutex for servo %d\n", i + 1);
     }
+
+    // assign the expander address to each stepper motor
+    stepperMotors[0].expanderAddr = EXPANDER1_ADDR;
+    stepperMotors[1].expanderAddr = EXPANDER1_ADDR;
+    stepperMotors[2].expanderAddr = EXPANDER2_ADDR;
+    stepperMotors[3].expanderAddr = EXPANDER2_ADDR;
+    stepperMotors[4].expanderAddr = EXPANDER3_ADDR;
+    stepperMotors[5].expanderAddr = EXPANDER3_ADDR;
 
     // example task
     // note that the stack size is in words, NOT bytes
