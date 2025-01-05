@@ -28,6 +28,6 @@ void updateStepperPWM(char* data, int arraySize);
 void updateStepperLIGHT(char* data, int arraySize);
 
 bool isStringEqual(char* subject, int subjectLength, char* target, int targetLength);
-
+float readAndConvertRawFloatBits(char* data, int arraySize, int start, int end);
 
 #endif
