@@ -163,20 +163,6 @@ void onBootInit()
     // This is the LED
     gpio_init(25);
     gpio_set_dir(25, GPIO_OUT);
-
-    stepper0 = {false, false, false, false, false, false, 0, 0, 0, 0, 0, 0, 0};
-    stepper1 = {false, false, false, false, false, false, 1, 0, 0, 0, 0, 0, 0};
-    stepper2 = {false, false, false, false, false, false, 2, 0, 0, 0, 0, 0, 0};
-    stepper3 = {false, false, false, false, false, false, 3, 0, 0, 0, 0, 0, 0};
-    stepper4 = {false, false, false, false, false, false, 4, 0, 0, 0, 0, 0, 0};
-    stepper5 = {false, false, false, false, false, false, 5, 0, 0, 0, 0, 0, 0};
-
-    servo0 = {0,0,0};
-    servo1 = {0,0,1};
-    servo2 = {0,0,2};
-    servo3 = {0,0,3};
-    servo4 = {0,0,4};
-    servo5 = {0,0,5};
 }
 
 int main(int argc, char **argv)
