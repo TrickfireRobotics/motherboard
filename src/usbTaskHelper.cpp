@@ -73,19 +73,82 @@ void updateStepperGeneral(char* data, int arraySize){
     printf("STEPPER GEN\n");
 
     int port = data[12] - '0';
-    float velocity = 0;
-    float position = 0;
+    float velocity = readAndConvertRawFloatBits(data, arraySize, 14, 46);
+    float position = readAndConvertRawFloatBits(data, arraySize, 47, 79);
+
+    
+}
+
+
+void updateStepperConfig(char* data, int arraySize){
+    printf("STEPPER CONF\n");
+
+    int port = data[13] - '0';
+    int ms1 = data[15] - '0';
+    int ms2 = data[17] - '0';
+    int ms3 = data[19] - '0';
+
+    printf("PORT %d\n", port);
+    printf("MS1 %d\n", ms1);
+    printf("MS2 %d\n", ms2);
+    printf("MS3 %d\n", ms3);
+}
+
+void updateStepperPower(char* data, int arraySize){
+    printf("STEPPER POWER\n");
+
+    int port = data[14] - '0';
+    int enable = data[16] - '0'; // integer 0 is 0; integer 1 is 1; integer 59 is k
+    int sleep = data[18] - '0';
+    int reset = data[20] - '0';
+
+    printf("PORT %d\n", port);
+    printf("enable %d\n", enable);
+    printf("sleep %d\n", sleep);
+    printf("reset %d\n", reset);
+
+
+}
+
+
+void updateStepperPWM(char* data, int arraySize){
+    printf("PWM\n");
+
+    int port = data[4] - '0';
+    float dutyCycle = readAndConvertRawFloatBits(data, arraySize, 6, 38);
+    float frequency = readAndConvertRawFloatBits(data, arraySize, 39, 71);
+
+    printf("PORT %d\n", port);
+    printf("Duty Cycle %f\n", dutyCycle);
+    printf("Frequency %f\n", frequency);
+
+}
+
+void updateStepperLIGHT(char* data, int arraySize){
+    printf("LIGHT\n");
+
+    char lightType = data[6];
+    int state = data[8] - '0';
+
+    printf("lightType %c\n", lightType);
+    printf("state%d\n", state);
+
+}
+
+float readAndConvertRawFloatBits(char* data, int arraySize, int start, int end){
+
+    float finalNumber = 0;
 
     // --- Converting the VELOCITY into its IEEE 754 floating point number ---
 
     // Step 1: Using an unsigned int (to avoid 2's complement) we fill the 32 bits from
     // the message sent
-    unsigned int rawVelocity = 0;
+    unsigned int rawFinalNumber = 0;
     int bitwiseOffset = 31;
 
-    for (int dataIndex = 14; dataIndex < 46; dataIndex++) {
+    for (int dataIndex = start; dataIndex < end; dataIndex++) {
         int bit = data[dataIndex] - '0';
-        rawVelocity = rawVelocity | (bit << bitwiseOffset);
+        rawFinalNumber = rawFinalNumber | (bit << bitwiseOffset);
         bitwiseOffset--;
     }
 
@@ -93,39 +156,11 @@ void updateStepperGeneral(char* data, int arraySize){
 
     // Gremlin code to convert uint to a float - not type casting, but physically changing how the
     // the mcu reads the bits in memory by manipulating some pointer types
-    unsigned int* rawVelocityPTR = &rawVelocity; // get pointer of the uint
+    unsigned int* rawVelocityPTR = &rawFinalNumber; // get pointer of the uint
     float* floatPTR = (float*)rawVelocityPTR; // convert that pointer into a float
-    velocity = *floatPTR; // convert that pointer into a pure ieee 754 single floating number
+    finalNumber = *floatPTR; // convert that pointer into a pure ieee 754 single floating number
+
+    return finalNumber;
 
 
-    printf("The port number is %u\n", port);
-    printf("The integer number is %u\n", rawVelocity);
-    printf("The floating number is %f\n", velocity);
-
-
-
-
-}
-
-
-void updateStepperConfig(char* data, int arraySize){
-    printf("STEPPER CONF\n");
-}
-
-void updateStepperPower(char* data, int arraySize){
-    printf("STEPPER POWER\n");
-}
-
-
-void updateStepperPWM(char* data, int arraySize){
-    printf("PWM\n");
-}
-
-void updateStepperLIGHT(char* data, int arraySize){
-    printf("LIGHT\n");
-
-}
-
-float readAndConvertRawFloatBits(char* data, int arraySize, int start, int end){
-    
 }
