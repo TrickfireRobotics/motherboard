@@ -182,15 +182,16 @@ typedef struct {
     bool isResetDirty;
     bool isMsDirty;
     bool isDirDirty;
+    bool ignoreTargetPos; // true = we spin continuously | false = we spin until we reach the targetPosition
     uint8_t expanderAddr;
     uint8_t MS1;
     uint8_t MS2;
     uint8_t MS3;
-    uint8_t dir;
-    uint16_t currentPosition;
-    uint16_t targetPosition;
-    uint32_t stepInterval;  // time unit = ms? us?
-    uint32_t lastStepTime;  // time unit = ms? us?
+    uint8_t dir; // 1 = counter clock wise | -1 = clock wise
+    uint16_t currentPosition; // in terms of stepper steps
+    uint16_t targetPosition; // in terms of stepper steps
+    uint32_t stepInterval;  // in us
+    uint32_t lastStepTime;  // in us
 } StepperMotor;
 
 // time unit = ms? us?
@@ -198,11 +199,14 @@ typedef struct {
     // uint8_t port;
     bool isOn;
     uint32_t startTime;
-    uint32_t onTime;
-    uint32_t offTime;
+    uint32_t onTime; // in us
+    uint32_t offTime; // in us
 } Servo;
 
 
+// External variables defined in main.cpp
+extern Servo servos[NUM_SERVOS];
+extern StepperMotor stepperMotors[NUM_STEPPERS];
 
 
 // ===== Function prototypes =====

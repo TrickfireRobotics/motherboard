@@ -17,6 +17,14 @@ enum CommandType{
     UNKNOWN = -1
 };
 
+enum StepResolution{
+    FULL = 1,
+    HALF = 2,
+    QUARTER = 4,
+    EIGHTH = 8,
+    SIXTEENTH = 16
+};
+
 
 // ===== Function prototypes =====
 CommandType getCommandTypeRaw(char* data, int arraySize);
@@ -29,5 +37,6 @@ void updateStepperLIGHT(char* data, int arraySize);
 
 bool isStringEqual(char* subject, int subjectLength, char* target, int targetLength);
 float readAndConvertRawFloatBits(char* data, int arraySize, int start, int end);
+StepResolution getStepperMotorStepRes(int port);
 
 #endif
