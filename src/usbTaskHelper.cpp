@@ -8,7 +8,8 @@ CommandType getCommandTypeRaw(char* data, int arraySize){
     char stringPower[5] = {'p','o','w','e','r'};
     char stringPwm[3] = {'p','w','m'};
     char stringLight[5] = {'l','i','g','h','t'};
-    char stringGetMB[5] = {'g','e','t','m','b'};
+    char stringGetMBDevice[6] = {'g','e','t','m','b', 'd'};
+    char stringGetMBDebugDevice[6] = {'g','e','t','m','b', 'b'};
 
 
     // Max length is 7 because "STEPPER" is seven
@@ -50,8 +51,11 @@ CommandType getCommandTypeRaw(char* data, int arraySize){
     else if (isStringEqual(firstWord, 7, stringLight, 5)) {
         return CommandType::LIGHT;
     }
-    else if (isStringEqual(firstWord, 7, stringGetMB, 5)){
-        return CommandType::GET_MOTHERBOARD_STATE;
+    else if (isStringEqual(firstWord, 7, stringGetMBDevice, 6)){
+        return CommandType::GET_MOTHERBOARD_DEVICE;
+    }
+    else if (isStringEqual(firstWord, 7, stringGetMBDebugDevice, 6)) {
+        return CommandType::GET_MOTHERBOARD_DEBUG_DEVICE;
     }
 
     return CommandType::UNKNOWN;
@@ -91,14 +95,15 @@ void updateStepperGeneral(char* data, int arraySize){
 
     // Now update the motherboard logical state
 
-    StepperMotor stepper = stepperMotors[port];
+    StepperMotor* stepper = &stepperMotors[port];
 
     if (velocity < 0.0) { // go ccw
-        stepper.dir = 0;
+        stepper->dir = 0;
     }
     else { // go cw
-        stepper.dir = 1;
+        stepper->dir = 1;
     }
+    stepper->isDirDirty = true;
 
     // NEMA 17-size motors have 200steps/rev
     // This means 1 STEP = 1.8deg = 0.005rev = 0.031415rad
@@ -107,12 +112,12 @@ void updateStepperGeneral(char* data, int arraySize){
     int totalStepsPerRev = 200 * stepResolution;
 
     if (!isPosNaN) {
-        stepper.targetPosition = totalStepsPerRev * position;
+        stepper->targetPosition = totalStepsPerRev * position;
     }
 
-    stepper.ignoreTargetPos = isPosNaN;
+    stepper->ignoreTargetPos = isPosNaN;
 
-    stepper.stepInterval = 1000000 / (totalStepsPerRev * velocity);
+    stepper->stepInterval = 1000000 / (totalStepsPerRev * velocity);
     
 }
 
@@ -130,10 +135,11 @@ void updateStepperConfig(char* data, int arraySize){
     printf("MS2 %d\n", ms2);
     printf("MS3 %d\n", ms3);
 
-    StepperMotor stepper = stepperMotors[port];
-    stepper.MS1 = ms1;
-    stepper.MS2 = ms2;
-    stepper.MS3 = ms3;
+    StepperMotor* stepper = &stepperMotors[port];
+    stepper->MS1 = ms1;
+    stepper->MS2 = ms2;
+    stepper->MS3 = ms3;
+    stepper->isMsDirty = true;
 
 }
 
@@ -150,16 +156,21 @@ void updateStepperPower(char* data, int arraySize){
     printf("sleep %d\n", sleep);
     printf("reset %d\n", reset);
 
-    StepperMotor stepper = stepperMotors[port];
-    stepper.isEnable = enable;
-    stepper.isEnableDirty = true;
+    StepperMotor* stepper = &stepperMotors[port];
+    if (enable != 59) {
+        stepper->isEnable = enable;
+        stepper->isEnableDirty = true;
+    }
 
-    stepper.isSleep = sleep;
-    stepper.isSleepDirty = true;
+    if (sleep != 59) {
+        stepper->isSleep = sleep;
+        stepper->isSleepDirty = true;
+    }
 
-    stepper.isReset = reset;
-    stepper.isResetDirty = true;
-
+    if (reset != 59) {
+        stepper->isReset = reset;
+        stepper->isResetDirty = true;
+    }
 
 }
 
@@ -176,22 +187,22 @@ void updateStepperPWM(char* data, int arraySize){
     printf("Frequency %f\n", frequency);
 
     // Clamp the duty cycle to [0.0, 1.0]
-    if (dutyCycle > 1.0) {
-        dutyCycle = 1.0;
+    if (dutyCycle > 100.0) {
+        dutyCycle = 1.0F;
     }
     else if (dutyCycle < 0.0) {
-        dutyCycle = 0.0;
+        dutyCycle = 0.0F;
     }
 
     // Update the servo motors. Use microseconds as it is common for
     // servo motors to use 0.5ms to 1.5ms for 0deg and 180deg
 
-    Servo servoMotor = servos[port];
+    Servo* servoMotor = &servos[port];
 
     float period = (1.0 / frequency) * 1000000.0; // seconds * 1000000 us
 
-    servoMotor.onTime = dutyCycle * period; // implicit float -> unint32_t
-    servoMotor.offTime = (1 - dutyCycle) * period;
+    servoMotor->onTime = (dutyCycle / 100.0) * period; // implicit float -> unint32_t
+    servoMotor->offTime = (1.0 - (dutyCycle / 100.0)) * period;
 
 }
 
@@ -208,8 +219,72 @@ void updateStepperLIGHT(char* data, int arraySize){
 
 }
 
-void sendMotherboardData(char* data, int arraySize){
+void sendMBDeviceData(char* data, int arraySize){
+    printf("mb data device");
+    // char deviceID[3] = {};
+    // deviceID[0] = data[6];
+    // deviceID[1] = data[7];
+    // deviceID[2] = data[8];
 
+    // int port = data[10] - '0';
+
+    // if (deviceID[0] == 'p' && deviceID[1] == 'w' && deviceID[2] == 'm') {
+    //     printf("Return pwm data\n");
+    // }
+    // else if (deviceID[0] == 's' && deviceID[1] == 't' && deviceID[2] == 'p') {
+    //     printf("Return stepper data\n");
+    // }
+    // else { // "lgh"
+    //     printf("Return light data\n");
+    // }
+
+
+}
+
+void sendMBDebugDeviceData(char* data, int arraySize){
+    printf("mb data debug device\n");
+
+
+    char deviceID[3] = {};
+    deviceID[0] = data[7];
+    deviceID[1] = data[8];
+    deviceID[2] = data[9];
+
+    int port = data[11] - '0';
+
+    if (deviceID[0] == 'p' && deviceID[1] == 'w' && deviceID[2] == 'm') {
+        printf("Return pwm data\n");
+        Servo servoMotor = servos[port];
+
+        printf("%d %d %d %d",
+            servoMotor.isOn,
+            servoMotor.startTime,
+            servoMotor.onTime,
+            servoMotor.offTime);
+
+    }
+    else if (deviceID[0] == 's' && deviceID[1] == 't' && deviceID[2] == 'p') {
+        printf("Return stepper data\n");
+
+        StepperMotor* stepper = &stepperMotors[port];
+
+        printf("%d %d %d %d %d %d %d %d %d %d %d %d\n", 
+            stepper->isEnable,
+            stepper->isSleep,
+            stepper->isReset,
+            stepper->ignoreTargetPos,
+            stepper->expanderAddr,
+            stepper->MS1,
+            stepper->MS2,
+            stepper->MS3,
+            stepper->dir,
+            stepper->currentPosition,
+            stepper->targetPosition,
+            stepper->stepInterval);
+    }
+    else { // "lgh"
+        printf("Return light data\n");
+    }
 
 
 }

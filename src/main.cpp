@@ -41,7 +41,7 @@ void exampleTask(void *param)
 
     while (true)
     {
-        printf("hello from example task\n");
+        //printf("hello from example task\n");
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 
@@ -94,8 +94,12 @@ void usbTask(void *params)
             case CommandType::LIGHT:
                 updateStepperLIGHT(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
                 break;
-            case CommandType::GET_MOTHERBOARD_STATE:
-                sendMotherboardData(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
+            case CommandType::GET_MOTHERBOARD_DEVICE:
+                sendMBDeviceData(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
+                break;
+            case CommandType::GET_MOTHERBOARD_DEBUG_DEVICE:
+                sendMBDebugDeviceData(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
+                break;
             default:
                 printf("UNKOWN COMMAND");
         }
