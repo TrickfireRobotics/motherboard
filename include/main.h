@@ -187,7 +187,7 @@ typedef struct {
     uint8_t MS1;
     uint8_t MS2;
     uint8_t MS3;
-    uint8_t dir; // 1 = counter clock wise | -1 = clock wise
+    uint8_t dir; // 1 = positive command = clockwise | 0 = negative command = counter clockwise
     uint16_t currentPosition; // in terms of stepper steps
     uint16_t targetPosition; // in terms of stepper steps
     uint32_t stepInterval;  // in us

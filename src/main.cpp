@@ -94,6 +94,8 @@ void usbTask(void *params)
             case CommandType::LIGHT:
                 updateStepperLIGHT(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
                 break;
+            case CommandType::GET_MOTHERBOARD_STATE:
+                sendMotherboardData(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
             default:
                 printf("UNKOWN COMMAND");
         }

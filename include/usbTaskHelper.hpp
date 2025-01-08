@@ -14,6 +14,7 @@ enum CommandType{
     STEPPER_POWER = 2,
     PWM = 3,
     LIGHT = 4,
+    GET_MOTHERBOARD_STATE = 5,
     UNKNOWN = -1
 };
 
@@ -34,6 +35,7 @@ void updateStepperConfig(char* data, int arraySize);
 void updateStepperPower(char* data, int arraySize);
 void updateStepperPWM(char* data, int arraySize);
 void updateStepperLIGHT(char* data, int arraySize);
+void sendMotherboardData(char* data, int arraySize);
 
 bool isStringEqual(char* subject, int subjectLength, char* target, int targetLength);
 float readAndConvertRawFloatBits(char* data, int arraySize, int start, int end);

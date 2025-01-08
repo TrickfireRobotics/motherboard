@@ -8,6 +8,7 @@ CommandType getCommandTypeRaw(char* data, int arraySize){
     char stringPower[5] = {'p','o','w','e','r'};
     char stringPwm[3] = {'p','w','m'};
     char stringLight[5] = {'l','i','g','h','t'};
+    char stringGetMB[5] = {'g','e','t','m','b'};
 
 
     // Max length is 7 because "STEPPER" is seven
@@ -49,6 +50,9 @@ CommandType getCommandTypeRaw(char* data, int arraySize){
     else if (isStringEqual(firstWord, 7, stringLight, 5)) {
         return CommandType::LIGHT;
     }
+    else if (isStringEqual(firstWord, 7, stringGetMB, 5)){
+        return CommandType::GET_MOTHERBOARD_STATE;
+    }
 
     return CommandType::UNKNOWN;
 }
@@ -74,11 +78,11 @@ void updateStepperGeneral(char* data, int arraySize){
 
     bool isPosNaN = false;
 
-    int port = data[12] - '0';
+    int port = data[12] - '0'; // "- '0'" because that maps to real ints from char
     float velocity = readAndConvertRawFloatBits(data, arraySize, 14, 46);
     float position = 0.0;
 
-    if (data[47] == 'n') {
+    if (data[47] == 'n' && data[48] == 'a' && data[47] == 'n') {
         isPosNaN = true;
     }
     else {
@@ -89,10 +93,10 @@ void updateStepperGeneral(char* data, int arraySize){
 
     StepperMotor stepper = stepperMotors[port];
 
-    if (velocity < 0.0) { // go cw
-        stepper.dir = -1;
+    if (velocity < 0.0) { // go ccw
+        stepper.dir = 0;
     }
-    else { // go ccw
+    else { // go cw
         stepper.dir = 1;
     }
 
@@ -102,23 +106,13 @@ void updateStepperGeneral(char* data, int arraySize){
     StepResolution stepResolution = getStepperMotorStepRes(port);
     int totalStepsPerRev = 200 * stepResolution;
 
-    
     if (!isPosNaN) {
         stepper.targetPosition = totalStepsPerRev * position;
-        stepper.ignoreTargetPos = false;
-    }
-    else {
-        stepper.ignoreTargetPos = true;
     }
 
+    stepper.ignoreTargetPos = isPosNaN;
 
     stepper.stepInterval = 1000000 / (totalStepsPerRev * velocity);
-
-
-
-
-
-
     
 }
 
@@ -210,6 +204,14 @@ void updateStepperLIGHT(char* data, int arraySize){
     printf("lightType %c\n", lightType);
     printf("state%d\n", state);
 
+    //update the light directly here via the i2c
+
+}
+
+void sendMotherboardData(char* data, int arraySize){
+
+
+
 }
 
 float readAndConvertRawFloatBits(char* data, int arraySize, int start, int end){
@@ -242,12 +244,12 @@ float readAndConvertRawFloatBits(char* data, int arraySize, int start, int end){
 
 }
 
-StepResolution getStepperMotorStepRes(int port){
+StepResolution getStepperMotorStepRes(uint8_t port){
     StepperMotor stepper = stepperMotors[port];
 
-    int ms1 = stepper.MS1;
-    int ms2 = stepper.MS2;
-    int ms3 = stepper.MS3;
+    uint8_t ms1 = stepper.MS1;
+    uint8_t ms2 = stepper.MS2;
+    uint8_t ms3 = stepper.MS3;
 
     if (ms1 == 0 && ms2 == 0 && ms3 == 0) {
         return StepResolution::FULL;
