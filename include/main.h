@@ -3,6 +3,18 @@
 
 #include <stdint.h>
 
+// FreeRTOS
+#include "FreeRTOS.h"
+#include "semphr.h"
+#include "task.h"
+
+#include "usbTaskHelper.hpp"
+#include <tusb.h>
+#include "pico/stdlib.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <pico/stdio_usb.h>
+
 // ===== Expander address =====
 #define EXPANDER1_ADDR 0x20
 #define EXPANDER2_ADDR 0x21
@@ -208,6 +220,9 @@ typedef struct {
 extern Servo servos[NUM_SERVOS];
 extern StepperMotor stepperMotors[NUM_STEPPERS];
 
+extern SemaphoreHandle_t stepperMutexes[NUM_STEPPERS];
+extern SemaphoreHandle_t servoMutexes[NUM_SERVOS];
+extern SemaphoreHandle_t writeToUsbMutex;
 
 // ===== Function prototypes =====
 void usbTask(void *params);

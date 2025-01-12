@@ -95,29 +95,40 @@ void updateStepperGeneral(char* data, int arraySize){
 
     // Now update the motherboard logical state
 
-    StepperMotor* stepper = &stepperMotors[port];
+    // lock the semaphore
+    SemaphoreHandle_t* semaphore = &stepperMutexes[port];
+    
+    if (xSemaphoreTake(*semaphore, 10)) {
+        
+        StepperMotor* stepper = &stepperMotors[port];
 
-    if (velocity < 0.0) { // go ccw
-        stepper->dir = 0;
+        if (velocity < 0.0) { // go ccw
+            stepper->dir = 0;
+        }
+        else { // go cw
+            stepper->dir = 1;
+        }
+        stepper->isDirDirty = true;
+
+        // NEMA 17-size motors have 200steps/rev
+        // This means 1 STEP = 1.8deg = 0.005rev = 0.031415rad
+        // TODO: make this a config setting
+        StepResolution stepResolution = getStepperMotorStepRes(port);
+        int totalStepsPerRev = 200 * stepResolution;
+
+        if (!isPosNaN) {
+            stepper->targetPosition = totalStepsPerRev * position;
+        }
+
+        stepper->ignoreTargetPos = isPosNaN;
+
+        stepper->stepInterval = 1000000.0 / (totalStepsPerRev * velocity);
+
+        xSemaphoreGive(*semaphore);
     }
-    else { // go cw
-        stepper->dir = 1;
-    }
-    stepper->isDirDirty = true;
 
-    // NEMA 17-size motors have 200steps/rev
-    // This means 1 STEP = 1.8deg = 0.005rev = 0.031415rad
-    // TODO: make this a config setting
-    StepResolution stepResolution = getStepperMotorStepRes(port);
-    int totalStepsPerRev = 200 * stepResolution;
 
-    if (!isPosNaN) {
-        stepper->targetPosition = totalStepsPerRev * position;
-    }
 
-    stepper->ignoreTargetPos = isPosNaN;
-
-    stepper->stepInterval = 1000000.0 / (totalStepsPerRev * velocity);
     
 }
 
@@ -135,11 +146,21 @@ void updateStepperConfig(char* data, int arraySize){
     printf("MS2 %d\n", ms2);
     printf("MS3 %d\n", ms3);
 
-    StepperMotor* stepper = &stepperMotors[port];
-    stepper->MS1 = ms1;
-    stepper->MS2 = ms2;
-    stepper->MS3 = ms3;
-    stepper->isMsDirty = true;
+    // lock the semaphore
+    SemaphoreHandle_t* semaphore = &stepperMutexes[port];
+
+    if (xSemaphoreTake(*semaphore, 10)) {
+        StepperMotor* stepper = &stepperMotors[port];
+        stepper->MS1 = ms1;
+        stepper->MS2 = ms2;
+        stepper->MS3 = ms3;
+        stepper->isMsDirty = true;
+
+
+        xSemaphoreGive(*semaphore);
+    }
+
+
 
 }
 
@@ -156,21 +177,30 @@ void updateStepperPower(char* data, int arraySize){
     printf("sleep %d\n", sleep);
     printf("reset %d\n", reset);
 
-    StepperMotor* stepper = &stepperMotors[port];
-    if (enable != 59) {
-        stepper->isEnable = enable;
-        stepper->isEnableDirty = true;
+        // lock the semaphore
+    SemaphoreHandle_t* semaphore = &stepperMutexes[port];
+
+    if (xSemaphoreTake(*semaphore, 10)) {
+        StepperMotor* stepper = &stepperMotors[port];
+        if (enable != 59) {
+            stepper->isEnable = enable;
+            stepper->isEnableDirty = true;
+        }
+
+        if (sleep != 59) {
+            stepper->isSleep = sleep;
+            stepper->isSleepDirty = true;
+        }
+
+        if (reset != 59) {
+            stepper->isReset = reset;
+            stepper->isResetDirty = true;
+        }
+
+
+        xSemaphoreGive(*semaphore);
     }
 
-    if (sleep != 59) {
-        stepper->isSleep = sleep;
-        stepper->isSleepDirty = true;
-    }
-
-    if (reset != 59) {
-        stepper->isReset = reset;
-        stepper->isResetDirty = true;
-    }
 
 }
 
@@ -201,8 +231,17 @@ void updateStepperPWM(char* data, int arraySize){
 
     float period = (1.0 / frequency) * 1000000.0; // seconds * 1000000 us
 
-    servoMotor->onTime = (dutyCycle / 100.0) * period; // implicit float -> unint32_t
-    servoMotor->offTime = (1.0 - (dutyCycle / 100.0)) * period;
+    // lock the semaphore
+    SemaphoreHandle_t* semaphore = &servoMutexes[port];
+
+    if (xSemaphoreTake(*semaphore, 10)) {
+
+        servoMotor->onTime = (dutyCycle / 100.0) * period; // implicit float -> unint32_t
+        servoMotor->offTime = (1.0 - (dutyCycle / 100.0)) * period;
+
+
+        xSemaphoreGive(*semaphore);
+    }
 
 }
 
@@ -216,6 +255,7 @@ void updateStepperLIGHT(char* data, int arraySize){
     printf("state%d\n", state);
 
     //update the light directly here via the i2c
+    
 
 }
 
@@ -233,10 +273,25 @@ void sendMBDeviceData(char* data, int arraySize){
         printf("Return pwm data\n");
         Servo* servoMotor = &servos[port];
 
-        float period = (servoMotor->onTime + servoMotor->offTime) / 1000000.0; //in in sec
-        float frequency = 1.0 / period;
+        float period;
+        float frequency;
 
-        float dutyCycle = (float)servoMotor->onTime / (servoMotor->onTime + servoMotor->offTime) * 100;
+        float dutyCycle;
+
+        // lock the semaphore
+        SemaphoreHandle_t* semaphore = &servoMutexes[port];
+
+        if (xSemaphoreTake(*semaphore, 10)) {
+
+            period = (servoMotor->onTime + servoMotor->offTime) / 1000000.0; //in in sec
+            frequency = 1.0 / period;
+
+            dutyCycle = (float)servoMotor->onTime / (servoMotor->onTime + servoMotor->offTime) * 100;
+
+            xSemaphoreGive(*semaphore);
+        }
+    
+
 
         printf("data back dutycycle %f\n", dutyCycle);
         printf("data back freq %f\n", frequency);
@@ -249,28 +304,31 @@ void sendMBDeviceData(char* data, int arraySize){
         u_int32_t* dutyCycleIntPtr = (u_int32_t*)dutyCyclePtr;
 
         // Lock writing to usb uart mutex
+        SemaphoreHandle_t* usbSemaphore = &writeToUsbMutex;
+
+        if (xSemaphoreTake(*usbSemaphore, 10)) {
+            printf("pwm ");
+
+            for (int bitShift = 31; bitShift > -1; bitShift--) {
+                int bit = ((*dutyCycleIntPtr) & (1 << bitShift)) >> bitShift;
+
+                printf("%u", bit);
+            }
+
+            printf(" ");
+
+            for (int bitShift = 31; bitShift > -1; bitShift--) {
+                int bit = ((*freqIntPtr) & (1 << bitShift)) >> bitShift;
+
+                printf("%u", bit);
+            }
+
+            printf("\n");
+
+            // unlock writing to usb uart mutex
+            xSemaphoreGive(*usbSemaphore);
+        }
         
-        printf("pwm ");
-
-        for (int bitShift = 31; bitShift > -1; bitShift--) {
-            int bit = ((*dutyCycleIntPtr) & (1 << bitShift)) >> bitShift;
-
-            printf("%u", bit);
-        }
-
-        printf(" ");
-
-        for (int bitShift = 31; bitShift > -1; bitShift--) {
-            int bit = ((*freqIntPtr) & (1 << bitShift)) >> bitShift;
-
-            printf("%u", bit);
-        }
-
-        printf("\n");
-
-        // unlock writing to usb uart mutex
-
-
         
     }
     else if (deviceID[0] == 's' && deviceID[1] == 't' && deviceID[2] == 'p') {
@@ -278,49 +336,75 @@ void sendMBDeviceData(char* data, int arraySize){
 
         StepperMotor* stepper = &stepperMotors[port];
 
-        StepResolution stepResolution = getStepperMotorStepRes(port);
-        float totalStepsPerRev = 200 * stepResolution;
+        // lock the semaphore
+        SemaphoreHandle_t* semaphore = &stepperMutexes[port];
 
-        float position = stepper->targetPosition / totalStepsPerRev;
-        float velocity = 1000000.0 / (totalStepsPerRev * stepper->stepInterval);
+        StepResolution stepResolution;
+        float totalStepsPerRev;
+        float position;
+        float velocity;
+        bool ignoreTargetPos;
+
+        if (xSemaphoreTake(*semaphore, 10)) {
+            stepResolution = getStepperMotorStepRes(port);
+            totalStepsPerRev = 200 * stepResolution;
+
+            position = stepper->targetPosition / totalStepsPerRev;
+            velocity = 1000000.0 / (totalStepsPerRev * stepper->stepInterval);
 
 
-        if (stepper->dir == 0) {
-            velocity *= -1;
+            if (stepper->dir == 0) {
+                velocity *= -1;
+            }
+
+            ignoreTargetPos = stepper->ignoreTargetPos;
+
+
+            xSemaphoreGive(*semaphore);
         }
 
-        printf("MY VELOCITY %f \n", velocity);
-        printf("MY POSITION %f \n", position);
+        // Lock writing to usb uart mutex
+        SemaphoreHandle_t* usbSemaphore = &writeToUsbMutex;
 
-        // --- funky pointer stuff
-        float* posPtr = &position;
-        u_int32_t* posIntPtr = (u_int32_t*)posPtr;
+        if (xSemaphoreTake(*usbSemaphore, 10)) {
 
-        float* velPtr = &velocity;
-        u_int32_t* velIntPtr = (u_int32_t*)velPtr;
 
-        // lock the write out mutex
-        printf("stp ");
 
-        for (int bitShift = 31; bitShift > -1; bitShift--) {
-            int bit = ((*velIntPtr) & (1 << bitShift)) >> bitShift;
 
-            printf("%u", bit);
+            printf("MY VELOCITY %f \n", velocity);
+            printf("MY POSITION %f \n", position);
+
+            // --- funky pointer stuff
+            float* posPtr = &position;
+            u_int32_t* posIntPtr = (u_int32_t*)posPtr;
+
+            float* velPtr = &velocity;
+            u_int32_t* velIntPtr = (u_int32_t*)velPtr;
+
+            // lock the write out mutex
+            printf("stp ");
+
+            for (int bitShift = 31; bitShift > -1; bitShift--) {
+                int bit = ((*velIntPtr) & (1 << bitShift)) >> bitShift;
+
+                printf("%u", bit);
+            }
+
+            printf(" ");
+
+            for (int bitShift = 31; bitShift > -1; bitShift--) {
+                int bit = ((*posIntPtr) & (1 << bitShift)) >> bitShift;
+
+                printf("%u", bit);
+            }
+
+            printf(" %u", ignoreTargetPos);
+
+            printf("\n");
+            // unlock writing to usb uart mutex
+            xSemaphoreGive(*usbSemaphore);
         }
 
-        printf(" ");
-
-        for (int bitShift = 31; bitShift > -1; bitShift--) {
-            int bit = ((*posIntPtr) & (1 << bitShift)) >> bitShift;
-
-            printf("%u", bit);
-        }
-
-        printf(" %u", stepper->ignoreTargetPos);
-
-        printf("\n");
-
-        // unlock the write out mutex
 
 
 
@@ -344,41 +428,69 @@ void sendMBDebugDeviceData(char* data, int arraySize){
 
     int port = data[11] - '0';
 
-    if (deviceID[0] == 'p' && deviceID[1] == 'w' && deviceID[2] == 'm') {
-        printf("Return pwm data\n");
-        Servo* servoMotor = &servos[port];
+    // Lock writing to usb uart mutex
+    SemaphoreHandle_t* usbSemaphore = &writeToUsbMutex;
 
-        printf("%d %d %d %d\n",
-            servoMotor->isOn,
-            servoMotor->startTime,
-            servoMotor->onTime,
-            servoMotor->offTime);
+    
 
+
+    if (xSemaphoreTake(*usbSemaphore, 10)) {
+        // lock the semaphore
+
+        if (deviceID[0] == 'p' && deviceID[1] == 'w' && deviceID[2] == 'm') {
+            printf("Return pwm data\n");
+            Servo* servoMotor = &servos[port];
+
+            SemaphoreHandle_t* semaphore = &servoMutexes[port];
+            if (xSemaphoreTake(*semaphore, 10)) {
+                printf("%d %d %d %d\n",
+                servoMotor->isOn,
+                servoMotor->startTime,
+                servoMotor->onTime,
+                servoMotor->offTime);
+
+                xSemaphoreGive(*semaphore);
+            }
+
+
+
+        }
+        else if (deviceID[0] == 's' && deviceID[1] == 't' && deviceID[2] == 'p') {
+            printf("Return stepper data\n");
+
+            StepperMotor* stepper = &stepperMotors[port];
+            SemaphoreHandle_t* semaphore = &stepperMutexes[port];
+
+            if (xSemaphoreTake(*semaphore, 10)) {
+
+                printf("%d %d %d %d %d %d %d %d %d %d %d %d\n", 
+                    stepper->isEnable,
+                    stepper->isSleep,
+                    stepper->isReset,
+                    stepper->ignoreTargetPos,
+                    stepper->expanderAddr,
+                    stepper->MS1,
+                    stepper->MS2,
+                    stepper->MS3,
+                    stepper->dir,
+                    stepper->currentPosition,
+                    stepper->targetPosition,
+                    stepper->stepInterval);
+
+                xSemaphoreGive(*semaphore);
+            }
+
+        }
+        else { // "lgh"
+            printf("Return light data\n");
+            //TODO finish the light data
+            // I am waiting for when this data will be available
+        }
+
+        // unlock writing to usb uart mutex
+        xSemaphoreGive(*usbSemaphore);
     }
-    else if (deviceID[0] == 's' && deviceID[1] == 't' && deviceID[2] == 'p') {
-        printf("Return stepper data\n");
 
-        StepperMotor* stepper = &stepperMotors[port];
-
-        printf("%d %d %d %d %d %d %d %d %d %d %d %d\n", 
-            stepper->isEnable,
-            stepper->isSleep,
-            stepper->isReset,
-            stepper->ignoreTargetPos,
-            stepper->expanderAddr,
-            stepper->MS1,
-            stepper->MS2,
-            stepper->MS3,
-            stepper->dir,
-            stepper->currentPosition,
-            stepper->targetPosition,
-            stepper->stepInterval);
-    }
-    else { // "lgh"
-        printf("Return light data\n");
-        //TODO finish the light data
-        // I am waiting for when this data will be available
-    }
 
 
 }

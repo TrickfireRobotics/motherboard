@@ -1,19 +1,13 @@
-#include "pico/stdlib.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <pico/stdio_usb.h>
-#include "main.h"
-#include "usbTaskHelper.hpp"
-#include <tusb.h>
 
-// FreeRTOS
-#include "FreeRTOS.h"
-#include "semphr.h"
-#include "task.h"
+#include "main.h"
+
+
+
 
 // mutex for each motors and servos
 SemaphoreHandle_t stepperMutexes[NUM_STEPPERS];
 SemaphoreHandle_t servoMutexes[NUM_SERVOS];
+SemaphoreHandle_t writeToUsbMutex;
 
 // handle for each task
 TaskHandle_t usbInTaskHandle;
@@ -199,6 +193,8 @@ int main(int argc, char **argv)
         if (servoMutexes[i] == NULL)
             printf("Failed to create mutex for servo %d\n", i + 1);
     }
+
+    writeToUsbMutex = xSemaphoreCreateMutex();
 
     // assign the expander address to each stepper motor
     stepperMotors[0].expanderAddr = EXPANDER1_ADDR;

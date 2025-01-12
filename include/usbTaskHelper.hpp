@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pico/stdio_usb.h>
+#include "FreeRTOS.h"
+#include "semphr.h"
+#include "task.h"
 
 enum CommandType{
     STEPPER_GEN = 0,
