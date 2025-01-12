@@ -221,22 +221,66 @@ void updateStepperLIGHT(char* data, int arraySize){
 
 void sendMBDeviceData(char* data, int arraySize){
     printf("mb data device");
-    // char deviceID[3] = {};
-    // deviceID[0] = data[6];
-    // deviceID[1] = data[7];
-    // deviceID[2] = data[8];
 
-    // int port = data[10] - '0';
+    char deviceID[3] = {};
+    deviceID[0] = data[7];
+    deviceID[1] = data[8];
+    deviceID[2] = data[9];
 
-    // if (deviceID[0] == 'p' && deviceID[1] == 'w' && deviceID[2] == 'm') {
-    //     printf("Return pwm data\n");
-    // }
-    // else if (deviceID[0] == 's' && deviceID[1] == 't' && deviceID[2] == 'p') {
-    //     printf("Return stepper data\n");
-    // }
-    // else { // "lgh"
-    //     printf("Return light data\n");
-    // }
+    int port = data[11] - '0';
+
+    if (deviceID[0] == 'p' && deviceID[1] == 'w' && deviceID[2] == 'm') {
+        printf("Return pwm data\n");
+        Servo* servoMotor = &servos[port];
+
+        float period = (servoMotor->onTime + servoMotor->offTime) / 1000000.0; //in in sec
+        float frequency = 1.0 / period;
+
+        float dutyCycle = (float)servoMotor->onTime / (servoMotor->onTime + servoMotor->offTime) * 100;
+
+        printf("data back dutycycle %f\n", dutyCycle);
+        printf("data back freq %f\n", frequency);
+
+        // --- do funky pointer bit stuff
+        float* freqPtr = &frequency;
+        u_int32_t* freqIntPtr = (u_int32_t*)freqPtr;
+
+        float* dutyCyclePtr = &dutyCycle;
+        u_int32_t* dutyCycleIntPtr = (u_int32_t*)dutyCyclePtr;
+
+        // Lock writing to usb uart mutex
+        
+        printf("pwm ");
+
+        for (int bitShift = 31; bitShift > -1; bitShift--) {
+            int bit = ((*dutyCycleIntPtr) & (1 << bitShift)) >> bitShift;
+
+            printf("%u", bit);
+        }
+
+        printf(" ");
+
+        for (int bitShift = 31; bitShift > -1; bitShift--) {
+            int bit = ((*freqIntPtr) & (1 << bitShift)) >> bitShift;
+
+            printf("%u", bit);
+        }
+
+        printf("\n");
+
+        // unlock writing to usb uart mutex
+
+
+        
+    }
+    else if (deviceID[0] == 's' && deviceID[1] == 't' && deviceID[2] == 'p') {
+        printf("Return stepper data\n");
+
+    }
+    else { // "lgh"
+        printf("Return light data\n");
+        //TODO finish this when light data is available
+    }
 
 
 }
@@ -254,13 +298,13 @@ void sendMBDebugDeviceData(char* data, int arraySize){
 
     if (deviceID[0] == 'p' && deviceID[1] == 'w' && deviceID[2] == 'm') {
         printf("Return pwm data\n");
-        Servo servoMotor = servos[port];
+        Servo* servoMotor = &servos[port];
 
-        printf("%d %d %d %d",
-            servoMotor.isOn,
-            servoMotor.startTime,
-            servoMotor.onTime,
-            servoMotor.offTime);
+        printf("%d %d %d %d\n",
+            servoMotor->isOn,
+            servoMotor->startTime,
+            servoMotor->onTime,
+            servoMotor->offTime);
 
     }
     else if (deviceID[0] == 's' && deviceID[1] == 't' && deviceID[2] == 'p') {
@@ -284,6 +328,8 @@ void sendMBDebugDeviceData(char* data, int arraySize){
     }
     else { // "lgh"
         printf("Return light data\n");
+        //TODO finish the light data
+        // I am waiting for when this data will be available
     }
 
 
