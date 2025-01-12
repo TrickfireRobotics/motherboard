@@ -1,5 +1,11 @@
 #include "usbTaskHelper.hpp"
 
+/**
+ * Based on the string input, determine what command is sent.
+ * Returns an entry from CommandType
+ * 
+ * 
+ */
 CommandType getCommandTypeRaw(char* data, int arraySize){
 
     char stringStepper[7] = {'s','t','e','p','p','e','r'};
@@ -17,14 +23,14 @@ CommandType getCommandTypeRaw(char* data, int arraySize){
     char firstWord[7];
     int index = 0;
 
-    // while we are not at the end of the array nor have we seen a white space, keep going
+    // While we are not at the end of the array nor have we seen a white space, keep going
     while (index < arraySize && data[index] != ' ') {
         firstWord[index] = data[index];
         index++;
     }
 
 
-    // 5 b/c POWER
+    // Length of 5 because keyword "power"
     char secondWord[5];
     int secondWordIndex = 0;
     index++;
@@ -34,6 +40,7 @@ CommandType getCommandTypeRaw(char* data, int arraySize){
         secondWordIndex++;
     }
 
+    // Actual comparisons
     if (isStringEqual(firstWord, 7, stringStepper, 7)) {
         if (isStringEqual(secondWord, 5, stringGen, 3)) {
             return CommandType::STEPPER_GEN;
@@ -61,6 +68,11 @@ CommandType getCommandTypeRaw(char* data, int arraySize){
     return CommandType::UNKNOWN;
 }
 
+/**
+ * Helper function to see if two char arrays are equal in characters
+ * 
+ * returns: true if equal, false if not
+ */
 bool isStringEqual(char* subject, int subjectLength, char* target, int targetLength){
     if (subjectLength < targetLength) {
         return false;
@@ -76,26 +88,29 @@ bool isStringEqual(char* subject, int subjectLength, char* target, int targetLen
 }
 
 
-
+/**
+ * Handles the "stepper gen..." command. 
+ * Look at the Notion docs for more info about the command definition:
+ * https://www.notion.so/trickfire/Software-USB-Communication-Commands-1651fd41ff5b80adbc37eacd546f46b2
+ */
 void updateStepperGeneral(char* data, int arraySize){
-    printf("STEPPER GEN\n");
-
     bool isPosNaN = false;
 
     int port = data[12] - '0'; // "- '0'" because that maps to real ints from char
-    float velocity = readAndConvertRawFloatBits(data, arraySize, 14, 46);
+    float velocity = readAndConvertRawBitsIntoFloat(data, arraySize, 14, 46);
     float position = 0.0;
 
     if (data[47] == 'n' && data[48] == 'a' && data[47] == 'n') {
         isPosNaN = true;
     }
     else {
-        position = readAndConvertRawFloatBits(data, arraySize, 47, 79);
+        //TODO: better error checking. What if we sent "00101aAgb"? The code would die.
+        position = readAndConvertRawBitsIntoFloat(data, arraySize, 47, 79);
     }
 
     // Now update the motherboard logical state
 
-    // lock the semaphore
+    // Lock the stepper semaphore
     SemaphoreHandle_t* semaphore = &stepperMutexes[port];
     
     if (xSemaphoreTake(*semaphore, 10)) {
@@ -126,27 +141,27 @@ void updateStepperGeneral(char* data, int arraySize){
 
         xSemaphoreGive(*semaphore);
     }
-
-
-
-    
 }
 
 
+/**
+ * Handles the "stepper conf..." command
+ * Look at the Notion docs for more info about the command definition:
+ * https://www.notion.so/trickfire/Software-USB-Communication-Commands-1651fd41ff5b80adbc37eacd546f46b2
+ */
 void updateStepperConfig(char* data, int arraySize){
-    printf("STEPPER CONF\n");
-
     int port = data[13] - '0';
     int ms1 = data[15] - '0';
     int ms2 = data[17] - '0';
     int ms3 = data[19] - '0';
 
-    printf("PORT %d\n", port);
-    printf("MS1 %d\n", ms1);
-    printf("MS2 %d\n", ms2);
-    printf("MS3 %d\n", ms3);
+    //Debugging
+    // printf("PORT %d\n", port);
+    // printf("MS1 %d\n", ms1);
+    // printf("MS2 %d\n", ms2);
+    // printf("MS3 %d\n", ms3);
 
-    // lock the semaphore
+    // Lock the stepper semaphore
     SemaphoreHandle_t* semaphore = &stepperMutexes[port];
 
     if (xSemaphoreTake(*semaphore, 10)) {
@@ -156,33 +171,34 @@ void updateStepperConfig(char* data, int arraySize){
         stepper->MS3 = ms3;
         stepper->isMsDirty = true;
 
-
+        // Unlock the stepper semaphore
         xSemaphoreGive(*semaphore);
     }
-
-
-
 }
 
+/**
+ * Handles the "stepper power..." command
+ * Look at the Notion docs for more info about the command definition:
+ * https://www.notion.so/trickfire/Software-USB-Communication-Commands-1651fd41ff5b80adbc37eacd546f46b2
+ */
 void updateStepperPower(char* data, int arraySize){
-    printf("STEPPER POWER\n");
-
     int port = data[14] - '0';
     int enable = data[16] - '0'; // integer 0 is 0; integer 1 is 1; integer 59 is k
     int sleep = data[18] - '0';
     int reset = data[20] - '0';
 
-    printf("PORT %d\n", port);
-    printf("enable %d\n", enable);
-    printf("sleep %d\n", sleep);
-    printf("reset %d\n", reset);
+    //Debugging
+    // printf("PORT %d\n", port);
+    // printf("enable %d\n", enable);
+    // printf("sleep %d\n", sleep);
+    // printf("reset %d\n", reset);
 
-        // lock the semaphore
+    // lock the semaphore
     SemaphoreHandle_t* semaphore = &stepperMutexes[port];
 
     if (xSemaphoreTake(*semaphore, 10)) {
         StepperMotor* stepper = &stepperMotors[port];
-        if (enable != 59) {
+        if (enable != 59) { // If "k" (for "keep"), then we do not do anything for this entry
             stepper->isEnable = enable;
             stepper->isEnableDirty = true;
         }
@@ -197,26 +213,27 @@ void updateStepperPower(char* data, int arraySize){
             stepper->isResetDirty = true;
         }
 
-
+        // Unlock the sempahore
         xSemaphoreGive(*semaphore);
     }
-
-
 }
 
-
+/**
+ * Handle the "pwm..." command
+ * Look at the Notion docs for more info about the command definition:
+ * https://www.notion.so/trickfire/Software-USB-Communication-Commands-1651fd41ff5b80adbc37eacd546f46b2
+ */
 void updateStepperPWM(char* data, int arraySize){
-    printf("PWM\n");
-
     int port = data[4] - '0';
-    float dutyCycle = readAndConvertRawFloatBits(data, arraySize, 6, 38);
-    float frequency = readAndConvertRawFloatBits(data, arraySize, 39, 71);
+    float dutyCycle = readAndConvertRawBitsIntoFloat(data, arraySize, 6, 38);
+    float frequency = readAndConvertRawBitsIntoFloat(data, arraySize, 39, 71);
 
-    printf("PORT %d\n", port);
-    printf("Duty Cycle %f\n", dutyCycle);
-    printf("Frequency %f\n", frequency);
+    // Debugging
+    // printf("PORT %d\n", port);
+    // printf("Duty Cycle %f\n", dutyCycle);
+    // printf("Frequency %f\n", frequency);
 
-    // Clamp the duty cycle to [0.0, 1.0]
+    // Clamp the duty cycle to [0.0, 100.0]
     if (dutyCycle > 100.0) {
         dutyCycle = 1.0F;
     }
@@ -226,6 +243,7 @@ void updateStepperPWM(char* data, int arraySize){
 
     // Update the servo motors. Use microseconds as it is common for
     // servo motors to use 0.5ms to 1.5ms for 0deg and 180deg
+    // Thus it is better to do 500us to 1500us because they are integers
 
     Servo* servoMotor = &servos[port];
 
@@ -239,12 +257,13 @@ void updateStepperPWM(char* data, int arraySize){
         servoMotor->onTime = (dutyCycle / 100.0) * period; // implicit float -> unint32_t
         servoMotor->offTime = (1.0 - (dutyCycle / 100.0)) * period;
 
-
+        // Unlock servo semaphore
         xSemaphoreGive(*semaphore);
     }
 
 }
 
+//TODO finish this in the future
 void updateStepperLIGHT(char* data, int arraySize){
     printf("LIGHT\n");
 
@@ -259,9 +278,14 @@ void updateStepperLIGHT(char* data, int arraySize){
 
 }
 
+/**
+ * Sends data to the host by handling the "getmbd..." command
+ * There are three types: pwm, stepper, and light
+ * 
+ * Look at the Notion docs for more info about the command definition:
+ * https://www.notion.so/trickfire/Software-USB-Communication-Commands-1651fd41ff5b80adbc37eacd546f46b2
+ */
 void sendMBDeviceData(char* data, int arraySize){
-    printf("mb data device");
-
     char deviceID[3] = {};
     deviceID[0] = data[7];
     deviceID[1] = data[8];
@@ -270,7 +294,6 @@ void sendMBDeviceData(char* data, int arraySize){
     int port = data[11] - '0';
 
     if (deviceID[0] == 'p' && deviceID[1] == 'w' && deviceID[2] == 'm') {
-        printf("Return pwm data\n");
         Servo* servoMotor = &servos[port];
 
         float period;
@@ -278,7 +301,7 @@ void sendMBDeviceData(char* data, int arraySize){
 
         float dutyCycle;
 
-        // lock the semaphore
+        // lock the servo semaphore
         SemaphoreHandle_t* semaphore = &servoMutexes[port];
 
         if (xSemaphoreTake(*semaphore, 10)) {
@@ -290,13 +313,8 @@ void sendMBDeviceData(char* data, int arraySize){
 
             xSemaphoreGive(*semaphore);
         }
-    
 
-
-        printf("data back dutycycle %f\n", dutyCycle);
-        printf("data back freq %f\n", frequency);
-
-        // --- do funky pointer bit stuff
+        // Do funky pointer bit stuff to get the pure bits
         float* freqPtr = &frequency;
         u_int32_t* freqIntPtr = (u_int32_t*)freqPtr;
 
@@ -332,8 +350,6 @@ void sendMBDeviceData(char* data, int arraySize){
         
     }
     else if (deviceID[0] == 's' && deviceID[1] == 't' && deviceID[2] == 'p') {
-        printf("Return stepper data\n");
-
         StepperMotor* stepper = &stepperMotors[port];
 
         // lock the semaphore
@@ -367,13 +383,6 @@ void sendMBDeviceData(char* data, int arraySize){
         SemaphoreHandle_t* usbSemaphore = &writeToUsbMutex;
 
         if (xSemaphoreTake(*usbSemaphore, 10)) {
-
-
-
-
-            printf("MY VELOCITY %f \n", velocity);
-            printf("MY POSITION %f \n", position);
-
             // --- funky pointer stuff
             float* posPtr = &position;
             u_int32_t* posIntPtr = (u_int32_t*)posPtr;
@@ -417,10 +426,16 @@ void sendMBDeviceData(char* data, int arraySize){
 
 }
 
+/**
+ * For debugging, handles the "getmbb..." command
+ * Unlike other commands, this does not care about sending the correct
+ * IEEE 754 floats or 32-bit integers as this is supposed to be
+ * printed to a console, not handled as actual data
+ * 
+ * Look at the Notion docs for more info about the command definition:
+ * https://www.notion.so/trickfire/Software-USB-Communication-Commands-1651fd41ff5b80adbc37eacd546f46b2
+ */
 void sendMBDebugDeviceData(char* data, int arraySize){
-    printf("mb data debug device\n");
-
-
     char deviceID[3] = {};
     deviceID[0] = data[7];
     deviceID[1] = data[8];
@@ -431,14 +446,10 @@ void sendMBDebugDeviceData(char* data, int arraySize){
     // Lock writing to usb uart mutex
     SemaphoreHandle_t* usbSemaphore = &writeToUsbMutex;
 
-    
-
-
     if (xSemaphoreTake(*usbSemaphore, 10)) {
         // lock the semaphore
 
         if (deviceID[0] == 'p' && deviceID[1] == 'w' && deviceID[2] == 'm') {
-            printf("Return pwm data\n");
             Servo* servoMotor = &servos[port];
 
             SemaphoreHandle_t* semaphore = &servoMutexes[port];
@@ -451,13 +462,8 @@ void sendMBDebugDeviceData(char* data, int arraySize){
 
                 xSemaphoreGive(*semaphore);
             }
-
-
-
         }
         else if (deviceID[0] == 's' && deviceID[1] == 't' && deviceID[2] == 'p') {
-            printf("Return stepper data\n");
-
             StepperMotor* stepper = &stepperMotors[port];
             SemaphoreHandle_t* semaphore = &stepperMutexes[port];
 
@@ -482,7 +488,6 @@ void sendMBDebugDeviceData(char* data, int arraySize){
 
         }
         else { // "lgh"
-            printf("Return light data\n");
             //TODO finish the light data
             // I am waiting for when this data will be available
         }
@@ -490,12 +495,12 @@ void sendMBDebugDeviceData(char* data, int arraySize){
         // unlock writing to usb uart mutex
         xSemaphoreGive(*usbSemaphore);
     }
-
-
-
 }
 
-float readAndConvertRawFloatBits(char* data, int arraySize, int start, int end){
+/**
+ * Convert raw bits from a string array into a IEEE 754 float
+ */
+float readAndConvertRawBitsIntoFloat(char* data, int arraySize, int start, int end){
 
     float finalNumber = 0;
 
@@ -525,6 +530,12 @@ float readAndConvertRawFloatBits(char* data, int arraySize, int start, int end){
 
 }
 
+/**
+ * Returns the type of step resolution the stepper motor
+ * controller is using
+ * 
+ * returns: entry from the StepResolution
+ */
 StepResolution getStepperMotorStepRes(uint8_t port){
     StepperMotor stepper = stepperMotors[port];
 
