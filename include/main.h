@@ -189,7 +189,7 @@ typedef struct {
     uint8_t MS3;
     uint8_t dir; // 1 = positive command = clockwise | 0 = negative command = counter clockwise
     uint16_t currentPosition; // in terms of stepper steps
-    uint16_t targetPosition; // in terms of stepper steps
+    uint16_t targetPosition; // in terms of stepper steps | Issue(?): what if we want the position to go negative?
     uint32_t stepInterval;  // in us
     uint32_t lastStepTime;  // in us
 } StepperMotor;

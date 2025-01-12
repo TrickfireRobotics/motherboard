@@ -117,7 +117,7 @@ void updateStepperGeneral(char* data, int arraySize){
 
     stepper->ignoreTargetPos = isPosNaN;
 
-    stepper->stepInterval = 1000000 / (totalStepsPerRev * velocity);
+    stepper->stepInterval = 1000000.0 / (totalStepsPerRev * velocity);
     
 }
 
@@ -275,6 +275,54 @@ void sendMBDeviceData(char* data, int arraySize){
     }
     else if (deviceID[0] == 's' && deviceID[1] == 't' && deviceID[2] == 'p') {
         printf("Return stepper data\n");
+
+        StepperMotor* stepper = &stepperMotors[port];
+
+        StepResolution stepResolution = getStepperMotorStepRes(port);
+        float totalStepsPerRev = 200 * stepResolution;
+
+        float position = stepper->targetPosition / totalStepsPerRev;
+        float velocity = 1000000.0 / (totalStepsPerRev * stepper->stepInterval);
+
+
+        if (stepper->dir == 0) {
+            velocity *= -1;
+        }
+
+        printf("MY VELOCITY %f \n", velocity);
+        printf("MY POSITION %f \n", position);
+
+        // --- funky pointer stuff
+        float* posPtr = &position;
+        u_int32_t* posIntPtr = (u_int32_t*)posPtr;
+
+        float* velPtr = &velocity;
+        u_int32_t* velIntPtr = (u_int32_t*)velPtr;
+
+        // lock the write out mutex
+        printf("stp ");
+
+        for (int bitShift = 31; bitShift > -1; bitShift--) {
+            int bit = ((*velIntPtr) & (1 << bitShift)) >> bitShift;
+
+            printf("%u", bit);
+        }
+
+        printf(" ");
+
+        for (int bitShift = 31; bitShift > -1; bitShift--) {
+            int bit = ((*posIntPtr) & (1 << bitShift)) >> bitShift;
+
+            printf("%u", bit);
+        }
+
+        printf(" %u", stepper->ignoreTargetPos);
+
+        printf("\n");
+
+        // unlock the write out mutex
+
+
 
     }
     else { // "lgh"
