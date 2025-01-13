@@ -1,17 +1,13 @@
-#include "pico/stdlib.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <pico/stdio_usb.h>
+
 #include "main.h"
 
-// FreeRTOS
-#include "FreeRTOS.h"
-#include "semphr.h"
-#include "task.h"
+
+
 
 // mutex for each motors and servos
 SemaphoreHandle_t stepperMutexes[NUM_STEPPERS];
 SemaphoreHandle_t servoMutexes[NUM_SERVOS];
+SemaphoreHandle_t writeToUsbMutex;
 
 // handle for each task
 TaskHandle_t usbInTaskHandle;
@@ -33,14 +29,14 @@ void exampleTask(void *param)
 {
     while (!stdio_usb_connected())
     {
-        sleep_ms(100);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     printf("stdio_usb_connected()\n");
 
     while (true)
     {
-        printf("hello from example task\n");
-        sleep_ms(1000);
+        //printf("hello from example task\n");
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 
     // debug for checking stack size
@@ -49,15 +45,64 @@ void exampleTask(void *param)
     printf("High water mark (words): %lu\n", uxTaskGetStackHighWaterMark(NULL));
 }
 
-// usb task
+/**
+ * The usbTask handles the following:
+ *   1) Reading data in from the USB UART
+ *   2) Parsing this data into established commands
+ *   3) Updating the global data associated with the command
+ * 
+ */
 void usbTask(void *params)
 {
     while (true)
     {
-        printf("hello from usbTask\n");
-        sleep_ms(1000);
+        if (!tud_cdc_available()) {
+            vTaskDelay(50 / portTICK_PERIOD_MS);
+            continue;
+        }
+
+        char inputBuffer[MAX_USB_INPUT_BUFFER_CHARS];
+
+        // The pico-sdk defines what "stdin" means - in this case it is the usb uart CDC
+        // Specifically, take a look at the CMakeLists.txt "pico_enable_stdio_usb"
+        // https://cec-code-lab.aps.edu/robotics/resources/pico-c-api/group__pico__stdio.html 
+        fgets(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS, stdin);
+
+        CommandType commandID = getCommandTypeRaw(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
+
+        printf("RAW DATA: %s\n", inputBuffer);
+
+        switch(commandID){
+            case CommandType::STEPPER_GEN:
+                updateStepperGeneral(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
+                break;
+            case CommandType::STEPPER_CONF:
+                updateStepperConfig(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
+                break;
+            case CommandType::STEPPER_POWER:
+                updateStepperPower(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
+                break;
+            case CommandType::PWM:
+                updateStepperPWM(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
+                break;
+            case CommandType::LIGHT:
+                updateStepperLIGHT(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
+                break;
+            case CommandType::GET_MOTHERBOARD_DEVICE:
+                sendMBDeviceData(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
+                break;
+            case CommandType::GET_MOTHERBOARD_DEBUG_DEVICE:
+                sendMBDebugDeviceData(inputBuffer, MAX_USB_INPUT_BUFFER_CHARS);
+                break;
+            default:
+                printf("UNKOWN COMMAND");
+        }
+
+        tud_cdc_read_flush();
+
+
     }
-    // TODO: add definition
+    
 }
 
 // light task
@@ -65,8 +110,8 @@ void lightTask(void *params)
 {
     while (true)
     {
-        printf("hello from lightTask\n");
-        sleep_ms(1000);
+        // printf("hello from lightTask\n");
+        // sleep_ms(1000);
     }
     // TODO: add definition
 }
@@ -76,8 +121,8 @@ void stepperMotorTask(void *params)
 {
     while (true)
     {
-        printf("hello from stepperMotorTask\n");
-        sleep_ms(1000);
+        // printf("hello from stepperMotorTask\n");
+        // sleep_ms(1000);
     }
     // TODO: add definition
 }
@@ -87,8 +132,8 @@ void pwmServoTask(void *params)
 {
     while (true)
     {
-        printf("hello from pwmServoTask\n");
-        sleep_ms(1000);
+        // printf("hello from pwmServoTask\n");
+        // sleep_ms(1000);
     }
     // TODO: add definition
 }
@@ -148,6 +193,8 @@ int main(int argc, char **argv)
         if (servoMutexes[i] == NULL)
             printf("Failed to create mutex for servo %d\n", i + 1);
     }
+
+    writeToUsbMutex = xSemaphoreCreateMutex();
 
     // assign the expander address to each stepper motor
     stepperMotors[0].expanderAddr = EXPANDER1_ADDR;

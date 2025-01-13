@@ -3,6 +3,18 @@
 
 #include <stdint.h>
 
+// FreeRTOS
+#include "FreeRTOS.h"
+#include "semphr.h"
+#include "task.h"
+
+#include "usbTaskHelper.hpp"
+#include <tusb.h>
+#include "pico/stdlib.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <pico/stdio_usb.h>
+
 // ===== Expander address =====
 #define EXPANDER1_ADDR 0x20
 #define EXPANDER2_ADDR 0x21
@@ -77,6 +89,10 @@
 #define LED_RED                 20
 #define LED_BLUE                19
 #define LED_GREEN               18
+
+
+// === usbTask specific values ===
+#define MAX_USB_INPUT_BUFFER_CHARS 96
 
 // ===== group into const for easy access =====
 const uint8_t stepperDirPins[NUM_STEPPERS] = {
@@ -178,15 +194,16 @@ typedef struct {
     bool isResetDirty;
     bool isMsDirty;
     bool isDirDirty;
+    bool ignoreTargetPos; // true = we spin continuously | false = we spin until we reach the targetPosition
     uint8_t expanderAddr;
     uint8_t MS1;
     uint8_t MS2;
     uint8_t MS3;
-    uint8_t dir;
-    uint16_t currentPosition;
-    uint16_t targetPosition;
-    uint32_t stepInterval;  // time unit = ms? us?
-    uint32_t lastStepTime;  // time unit = ms? us?
+    uint8_t dir; // 1 = positive command = clockwise | 0 = negative command = counter clockwise
+    uint16_t currentPosition; // in terms of stepper steps
+    uint16_t targetPosition; // in terms of stepper steps | Issue(?): what if we want the position to go negative?
+    uint32_t stepInterval;  // in us
+    uint32_t lastStepTime;  // in us
 } StepperMotor;
 
 // time unit = ms? us?
@@ -194,10 +211,18 @@ typedef struct {
     // uint8_t port;
     bool isOn;
     uint32_t startTime;
-    uint32_t onTime;
-    uint32_t offTime;
+    uint32_t onTime; // in us
+    uint32_t offTime; // in us
 } Servo;
 
+
+// External variables defined in main.cpp
+extern Servo servos[NUM_SERVOS];
+extern StepperMotor stepperMotors[NUM_STEPPERS];
+
+extern SemaphoreHandle_t stepperMutexes[NUM_STEPPERS];
+extern SemaphoreHandle_t servoMutexes[NUM_SERVOS];
+extern SemaphoreHandle_t writeToUsbMutex;
 
 // ===== Function prototypes =====
 void usbTask(void *params);
