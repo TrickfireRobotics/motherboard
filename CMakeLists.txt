@@ -21,6 +21,7 @@ add_compile_definitions(DEBUG)
 
 add_executable(${PROJECT_NAME}
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/usbTaskHelper.cpp
     #${CMAKE_CURRENT_SOURCE_DIR}/src/dataInUSB.cpp
     #${CMAKE_CURRENT_SOURCE_DIR}/src/dataOutUSB.cpp
 )
