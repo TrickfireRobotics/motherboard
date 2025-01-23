@@ -40,5 +40,6 @@ target_link_libraries(${PROJECT_NAME}
     pico_stdlib 
     FreeRTOS-Kernel 
     FreeRTOS-Kernel-Heap4 
+    hardware_i2c
     #tinyusb_device
 )

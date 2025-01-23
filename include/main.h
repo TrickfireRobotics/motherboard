@@ -11,9 +11,15 @@
 #include "usbTaskHelper.hpp"
 #include <tusb.h>
 #include "pico/stdlib.h"
+#include "hardware/i2c.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <pico/stdio_usb.h>
+
+// ===== I2C =====
+#define I2C_PORT i2c0
+#define I2C_SDA 4
+#define I2C_SCL 5
 
 // ===== Expander address =====
 #define EXPANDER1_ADDR 0x20
@@ -21,74 +27,84 @@
 #define EXPANDER3_ADDR 0x22
 #define EXPANDER4_ADDR 0x23
 
-// ===== Stepper Motors, Servos, and LED pins
+// ===== Expander registers =====
+#define TCA9555_INPUT_PORT_0 0x00
+#define TCA9555_INPUT_PORT_1 0x01
+#define TCA9555_OUTPUT_PORT_0 0x02
+#define TCA9555_OUTPUT_PORT_1 0x03
+#define TCA9555_POLARITY_PORT_0 0x04
+#define TCA9555_POLARITY_PORT_1 0x05
+#define TCA9555_CONFIG_PORT_0 0x06
+#define TCA9555_CONFIG_PORT_1 0x07
+
+// ===== Stepper Motors, Servos, and LED ports (not pins)
 #define NUM_STEPPERS 6
 #define NUM_SERVOS 6
 
-#define STEPPER_1_DIR 20
-#define STEPPER_1_STEP 19
-#define STEPPER_1_SLEEP 18
-#define STEPPER_1_RST 17
-#define STEPPER_1_EN 13
-#define STEPPER_1_MS1 14
-#define STEPPER_1_MS2 15
-#define STEPPER_1_MS3 16
+#define STEPPER_1_DIR 17
+#define STEPPER_1_STEP 16
+#define STEPPER_1_SLEEP 15
+#define STEPPER_1_RST 14
+#define STEPPER_1_EN 10
+#define STEPPER_1_MS1 11
+#define STEPPER_1_MS2 12
+#define STEPPER_1_MS3 13
 
-#define STEPPER_2_DIR 11
-#define STEPPER_2_STEP 10
-#define STEPPER_2_SLEEP 9
-#define STEPPER_2_RST 8
-#define STEPPER_2_EN 4
-#define STEPPER_2_MS1 5
-#define STEPPER_2_MS2 6
-#define STEPPER_2_MS3 7
+#define STEPPER_2_DIR 7
+#define STEPPER_2_STEP 6
+#define STEPPER_2_SLEEP 5
+#define STEPPER_2_RST 4
+#define STEPPER_2_EN 0
+#define STEPPER_2_MS1 1
+#define STEPPER_2_MS2 2
+#define STEPPER_2_MS3 3
 
-#define STEPPER_3_DIR 20
-#define STEPPER_3_STEP 19
-#define STEPPER_3_SLEEP 18
-#define STEPPER_3_RST 17
-#define STEPPER_3_EN 13
-#define STEPPER_3_MS1 14
-#define STEPPER_3_MS2 15
-#define STEPPER_3_MS3 16
+#define STEPPER_3_DIR 17
+#define STEPPER_3_STEP 16
+#define STEPPER_3_SLEEP 15
+#define STEPPER_3_RST 14
+#define STEPPER_3_EN 10
+#define STEPPER_3_MS1 11
+#define STEPPER_3_MS2 12
+#define STEPPER_3_MS3 13
 
-#define STEPPER_4_DIR 11
-#define STEPPER_4_STEP 10
-#define STEPPER_4_SLEEP 9
-#define STEPPER_4_RST 8
-#define STEPPER_4_EN 4
-#define STEPPER_4_MS1 5
-#define STEPPER_4_MS2 6
-#define STEPPER_4_MS3 7
+#define STEPPER_4_DIR 7
+#define STEPPER_4_STEP 6
+#define STEPPER_4_SLEEP 5
+#define STEPPER_4_RST 4
+#define STEPPER_4_EN 0
+#define STEPPER_4_MS1 1
+#define STEPPER_4_MS2 2
+#define STEPPER_4_MS3 3
 
-#define STEPPER_5_DIR 20
-#define STEPPER_5_STEP 19
-#define STEPPER_5_SLEEP 18
-#define STEPPER_5_RST 17
-#define STEPPER_5_EN 13
-#define STEPPER_5_MS1 14
-#define STEPPER_5_MS2 15
-#define STEPPER_5_MS3 16
+#define STEPPER_5_DIR 17
+#define STEPPER_5_STEP 16
+#define STEPPER_5_SLEEP 15
+#define STEPPER_5_RST 14
+#define STEPPER_5_EN 10
+#define STEPPER_5_MS1 11
+#define STEPPER_5_MS2 12
+#define STEPPER_5_MS3 13
 
-#define STEPPER_6_DIR 11
-#define STEPPER_6_STEP 10
-#define STEPPER_6_SLEEP 9
-#define STEPPER_6_RST 8
-#define STEPPER_6_EN 4
-#define STEPPER_6_MS1 5
-#define STEPPER_6_MS2 6
-#define STEPPER_6_MS3 7
+#define STEPPER_6_DIR 7
+#define STEPPER_6_STEP 6
+#define STEPPER_6_SLEEP 5
+#define STEPPER_6_RST 4
+#define STEPPER_6_EN 0
+#define STEPPER_6_MS1 1
+#define STEPPER_6_MS2 2
+#define STEPPER_6_MS3 3
 
-#define PWM1 11
-#define PWM2 10
-#define PWM3 9
-#define PWM4 8
-#define PWM5 7
-#define PWM6 6
+#define PWM1 7
+#define PWM2 6
+#define PWM3 5
+#define PWM4 4
+#define PWM5 3
+#define PWM6 2
 
-#define LED_RED 20
-#define LED_BLUE 19
-#define LED_GREEN 18
+#define LED_RED 17
+#define LED_BLUE 16
+#define LED_GREEN 15
 
 // === usbTask specific values ===
 #define MAX_USB_INPUT_BUFFER_CHARS 96
