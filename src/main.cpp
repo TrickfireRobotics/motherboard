@@ -447,7 +447,7 @@ int main(int argc, char **argv)
     gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
     gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
 
-    // config all ports as output
+    // config all ports as output (default value for output is all HIGH)
     // write all config reg 0 first
     uint8_t data0[2] = {TCA9555_CONFIG_PORT_0, 0x00};
     i2c_write_blocking(I2C_PORT, EXPANDER1_ADDR, data0, 2, false);

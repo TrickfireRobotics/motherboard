@@ -17,9 +17,9 @@
 #include <pico/stdio_usb.h>
 
 // ===== I2C =====
-#define I2C_PORT i2c0
-#define I2C_SDA 4
-#define I2C_SCL 5
+#define I2C_PORT i2c1
+#define I2C_SDA 2
+#define I2C_SCL 3
 
 // ===== Expander address =====
 #define EXPANDER1_ADDR 0x20
