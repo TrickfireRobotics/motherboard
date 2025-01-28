@@ -152,6 +152,10 @@ void stepperMotorTask(void *params)
 
                         // SLP active low
                         i2cSetPin(stepperMotors[i].expanderAddr, stepperSleepPins[i], !stepperMotors[i].isSleep);
+
+                        // if sleep pull HIGH (wake up the driver)
+                        // wait 1 ms to stabilize
+                        vTaskDelay(1 / portTICK_PERIOD_MS);
                     }
                     else if (stepperMotors[i].isResetDirty)
                     {
@@ -162,14 +166,25 @@ void stepperMotorTask(void *params)
                         // double check to see if the cmd to turn high comes from
                         // the uart or do we just pull it low for a certain time
                         // and pull it back high
-                        i2cSetPin(stepperMotors[i].expanderAddr, stepperRstPins[i], !stepperMotors[i].isReset);
+                        // -> as of now, pull low for 2us and pull high again
 
-                        // reset the position var as well
-                        if (stepperMotors[i].isReset)
-                        {
-                            stepperMotors[i].currentPosition = 0;
-                            stepperMotors[i].targetPosition = 0;
-                        }
+                        /* Un-comment the below if decided to NOT pull low -> wait -> high*/
+                        // i2cSetPin(stepperMotors[i].expanderAddr, stepperRstPins[i], !stepperMotors[i].isReset);
+
+                        // // reset the position var as well
+                        // if (stepperMotors[i].isReset)
+                        // {
+                        //     stepperMotors[i].currentPosition = 0;
+                        //     stepperMotors[i].targetPosition = 0;
+                        // }
+
+                        i2cSetPin(stepperMotors[i].expanderAddr, stepperRstPins[i], 0);
+                        sleep_us(2);
+                        i2cSetPin(stepperMotors[i].expanderAddr, stepperRstPins[i], 1);
+
+                        stepperMotors[i].currentPosition = 0;
+                        stepperMotors[i].targetPosition = 0;
+                        stepperMotors[i].isReset = false;
                     }
 
                     // if disable, sleep, and reset, return the mutex and continue the loop
@@ -203,32 +218,61 @@ void stepperMotorTask(void *params)
                     }
 
                     /*
-                        If current pos < target pos
-                        check step time & perform the step
-                        else continue the loop
+                        If dir = cw (1)
+                            If current pos < target pos
+                            check step time & perform the step
+                            else continue the loop
+                        If dir = ccw (0)
+                            If current pos > target pos
+                            check step time & perform the step
+                            else continue the loop
                     */
-                    if (stepperMotors[i].currentPosition < stepperMotors[i].targetPosition &&
-                        ((xTaskGetTickCount() - stepperMotors[i].lastStepTime) >= stepperMotors[i].stepInterval))
+
+                    // get the time in us
+                    uint64_t currentTime = time_us_64();
+                    if (stepperMotors[i].dir)
                     {
-                        // increase the step count
-                        ++stepperMotors[i].currentPosition;
+                        if (stepperMotors[i].currentPosition < stepperMotors[i].targetPosition &&
+                            ((currentTime - stepperMotors[i].lastStepTime) >= stepperMotors[i].stepInterval))
+                        {
+                            // increase the step count
+                            ++stepperMotors[i].currentPosition;
 
-                        // return the mutex
-                        xSemaphoreGive(stepperMutexes[i]);
+                            // set the last step time
+                            stepperMotors[i].lastStepTime = currentTime;
 
-                        // send step cmd
-                        i2cSetPin(stepperMotors[i].expanderAddr, stepperStepPins[i], 1);
+                            // send step cmd
+                            i2cSetPin(stepperMotors[i].expanderAddr, stepperStepPins[i], 1);
 
-                        // minimum pulse width of A4988 is 1 us for both high and low
-                        sleep_us(1);
+                            // minimum pulse width of A4988 is 1 us for both high and low
+                            sleep_us(1);
 
-                        i2cSetPin(stepperMotors[i].expanderAddr, stepperStepPins[i], 0);
+                            i2cSetPin(stepperMotors[i].expanderAddr, stepperStepPins[i], 0);
+                        }
                     }
-                    // for other cases, remember to return the mutexes as well
                     else
                     {
-                        xSemaphoreGive(stepperMutexes[i]);
+                        if (stepperMotors[i].currentPosition > stepperMotors[i].targetPosition &&
+                            ((currentTime - stepperMotors[i].lastStepTime) >= stepperMotors[i].stepInterval))
+                        {
+                            // decrease the step count
+                            --stepperMotors[i].currentPosition;
+
+                            // set the last step time
+                            stepperMotors[i].lastStepTime = currentTime;
+
+                            // send step cmd
+                            i2cSetPin(stepperMotors[i].expanderAddr, stepperStepPins[i], 1);
+
+                            // minimum pulse width of A4988 is 1 us for both high and low
+                            sleep_us(1);
+
+                            i2cSetPin(stepperMotors[i].expanderAddr, stepperStepPins[i], 0);
+                        }
                     }
+
+                    // return the mutex
+                    xSemaphoreGive(stepperMutexes[i]);
                 }
             }
         }
@@ -255,23 +299,26 @@ void pwmServoTask(void *params)
                 if (xSemaphoreTake(servoMutexes[i], (TickType_t)10) == pdTRUE)
                 {
                     // if servo is on, checks against the on period
-                    if (servos[i].isOn && ((xTaskGetTickCount() - servos[i].startTime) >= servos[i].onTime))
+                    // get the time in us
+                    uint64_t currentTime = time_us_64();
+
+                    if (servos[i].isOn && ((currentTime - servos[i].startTime) >= servos[i].onTime))
                     {
                         // turn it off
                         i2cSetPin(EXPANDER4_ADDR, pwmPins[i], 0);
 
                         // reset the start time
-                        servos[i].startTime = xTaskGetTickCount();
+                        servos[i].startTime = currentTime;
                         servos[i].isOn = false;
                     }
                     // else if it's off, check against the off period
-                    else if (!servos[i].isOn && ((xTaskGetTickCount() - servos[i].startTime) >= servos[i].offTime))
+                    else if (!servos[i].isOn && ((currentTime - servos[i].startTime) >= servos[i].offTime))
                     {
                         // turn it on
                         i2cSetPin(EXPANDER4_ADDR, pwmPins[i], 1);
 
                         // reset the start time
-                        servos[i].startTime = xTaskGetTickCount();
+                        servos[i].startTime = currentTime;
                         servos[i].isOn = true;
                     }
 
@@ -399,6 +446,46 @@ void onBootInit()
     // This is the LED
     gpio_init(25);
     gpio_set_dir(25, GPIO_OUT);
+
+    // initialize the i2c bus
+    // I2C Initialisation. Using it at 400Khz.
+    i2c_init(I2C_PORT, 400 * 1000);
+
+    gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
+    gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
+
+    // config all ports as output (default value for output is all HIGH)
+    // write all config reg 0 as output first
+    uint8_t data0[2] = {TCA9555_CONFIG_PORT_0, 0x00};
+    i2c_write_blocking(I2C_PORT, EXPANDER1_ADDR, data0, 2, false);
+    i2c_write_blocking(I2C_PORT, EXPANDER2_ADDR, data0, 2, false);
+    i2c_write_blocking(I2C_PORT, EXPANDER3_ADDR, data0, 2, false);
+    i2c_write_blocking(I2C_PORT, EXPANDER4_ADDR, data0, 2, false);
+
+    // then write all config reg 1 as output
+    uint8_t data1[2] = {TCA9555_CONFIG_PORT_1, 0x00};
+    i2c_write_blocking(I2C_PORT, EXPANDER1_ADDR, data1, 2, false);
+    i2c_write_blocking(I2C_PORT, EXPANDER2_ADDR, data1, 2, false);
+    i2c_write_blocking(I2C_PORT, EXPANDER3_ADDR, data1, 2, false);
+    i2c_write_blocking(I2C_PORT, EXPANDER4_ADDR, data1, 2, false);
+
+    // write all output to LOW first
+    // the default output reg now = 0x00, so only need to send 1 cmd each
+    i2cSetPin(EXPANDER1_ADDR, STEPPER_1_EN, 0);
+    i2cSetPin(EXPANDER2_ADDR, STEPPER_2_EN, 0);
+    i2cSetPin(EXPANDER3_ADDR, STEPPER_3_EN, 0);
+    i2cSetPin(EXPANDER4_ADDR, STEPPER_4_EN, 0);
+
+    // after this, reset = Low (active)
+    // wait 2 us then pull reset High, stepper is at home position
+    sleep_us(2);
+
+    i2cSetPin(EXPANDER1_ADDR, STEPPER_1_RST, 1);
+    i2cSetPin(EXPANDER1_ADDR, STEPPER_2_RST, 1);
+    i2cSetPin(EXPANDER2_ADDR, STEPPER_3_RST, 1);
+    i2cSetPin(EXPANDER2_ADDR, STEPPER_4_RST, 1);
+    i2cSetPin(EXPANDER3_ADDR, STEPPER_5_RST, 1);
+    i2cSetPin(EXPANDER3_ADDR, STEPPER_6_RST, 1);
 }
 
 int main(int argc, char **argv)
@@ -440,28 +527,6 @@ int main(int argc, char **argv)
     stepperMotors[4].expanderAddr = EXPANDER3_ADDR;
     stepperMotors[5].expanderAddr = EXPANDER3_ADDR;
 
-    // initialize the i2c bus
-    // I2C Initialisation. Using it at 400Khz.
-    i2c_init(I2C_PORT, 400 * 1000);
-
-    gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
-    gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
-
-    // config all ports as output (default value for output is all HIGH)
-    // write all config reg 0 first
-    uint8_t data0[2] = {TCA9555_CONFIG_PORT_0, 0x00};
-    i2c_write_blocking(I2C_PORT, EXPANDER1_ADDR, data0, 2, false);
-    i2c_write_blocking(I2C_PORT, EXPANDER2_ADDR, data0, 2, false);
-    i2c_write_blocking(I2C_PORT, EXPANDER3_ADDR, data0, 2, false);
-    i2c_write_blocking(I2C_PORT, EXPANDER4_ADDR, data0, 2, false);
-
-    // then write all config reg 1
-    uint8_t data1[2] = {TCA9555_CONFIG_PORT_1, 0x00};
-    i2c_write_blocking(I2C_PORT, EXPANDER1_ADDR, data1, 2, false);
-    i2c_write_blocking(I2C_PORT, EXPANDER2_ADDR, data1, 2, false);
-    i2c_write_blocking(I2C_PORT, EXPANDER3_ADDR, data1, 2, false);
-    i2c_write_blocking(I2C_PORT, EXPANDER4_ADDR, data1, 2, false);
-
     // example task
     // note that the stack size is in words, NOT bytes
     // (see doc for explanation)
@@ -485,14 +550,14 @@ int main(int argc, char **argv)
 
     xTaskCreate(stepperMotorTask,
                 "STEPPER_TASK",
-                configMINIMAL_STACK_SIZE,
+                1500, // change later after calibration
                 NULL,
                 STEPPER_TASK_PRIORITY,
                 &stepperMotorTaskHandle);
 
     xTaskCreate(pwmServoTask,
                 "SERVO_TASK",
-                configMINIMAL_STACK_SIZE,
+                1500, // change later after calibration
                 NULL,
                 PWM_SERVO_TASK_PRIOTITY,
                 &pwmServoTaskHandle);

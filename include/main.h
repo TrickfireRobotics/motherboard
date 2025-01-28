@@ -206,21 +206,21 @@ typedef struct
     uint8_t MS1;
     uint8_t MS2;
     uint8_t MS3;
-    uint8_t dir;              // 1 = positive command = clockwise | 0 = negative command = counter clockwise
-    uint16_t currentPosition; // in terms of stepper steps
-    uint16_t targetPosition;  // in terms of stepper steps | Issue(?): what if we want the position to go negative?
-    uint32_t stepInterval;    // in us
-    uint32_t lastStepTime;    // in us
+    uint8_t dir;             // 1 = positive command = clockwise | 0 = negative command = counter clockwise
+    int16_t currentPosition; // in terms of stepper steps
+    int16_t targetPosition;  // in terms of stepper steps | Issue(?): what if we want the position to go negative?
+    uint64_t stepInterval;   // in us
+    uint64_t lastStepTime;   // in us
 } StepperMotor;
 
 // time unit = ms? us?
 typedef struct
 {
     // uint8_t port;
-    bool isOn;
-    uint32_t startTime;
-    uint32_t onTime;  // in us
-    uint32_t offTime; // in us
+    bool isOn; // check if the servo is currently HIGH or LOW of the pwm
+    uint64_t startTime;
+    uint64_t onTime;  // in us
+    uint64_t offTime; // in us
 } Servo;
 
 // External variables defined in main.cpp
