@@ -232,8 +232,11 @@ void stepperMotorTask(void *params)
                     uint64_t currentTime = time_us_64();
                     if (stepperMotors[i].dir)
                     {
-                        if (stepperMotors[i].currentPosition < stepperMotors[i].targetPosition &&
-                            ((currentTime - stepperMotors[i].lastStepTime) >= stepperMotors[i].stepInterval))
+                        // check for time
+                        // then check for spin continously or if has reached target position
+                        if ((currentTime - stepperMotors[i].lastStepTime) >= stepperMotors[i].stepInterval &&
+                            (stepperMotors[i].ignoreTargetPos ||
+                             (stepperMotors[i].currentPosition < stepperMotors[i].targetPosition)))
                         {
                             // increase the step count
                             ++stepperMotors[i].currentPosition;
@@ -252,8 +255,10 @@ void stepperMotorTask(void *params)
                     }
                     else
                     {
-                        if (stepperMotors[i].currentPosition > stepperMotors[i].targetPosition &&
-                            ((currentTime - stepperMotors[i].lastStepTime) >= stepperMotors[i].stepInterval))
+                        if ((currentTime - stepperMotors[i].lastStepTime) >= stepperMotors[i].stepInterval &&
+                            (stepperMotors[i].ignoreTargetPos ||
+                             (stepperMotors[i].currentPosition > stepperMotors[i].targetPosition)))
+
                         {
                             // decrease the step count
                             --stepperMotors[i].currentPosition;
