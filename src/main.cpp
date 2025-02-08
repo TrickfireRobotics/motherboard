@@ -491,6 +491,14 @@ void onBootInit()
     i2cSetPin(EXPANDER2_ADDR, STEPPER_4_RST, 1);
     i2cSetPin(EXPANDER3_ADDR, STEPPER_5_RST, 1);
     i2cSetPin(EXPANDER3_ADDR, STEPPER_6_RST, 1);
+
+    //Give a default float value for the servos
+
+    for (int index = 0; index < 6; index++) {
+        (&servos[index])->onTime = (uint64_t)10000; //500us = 0.5ms
+        (&servos[index])->offTime = (uint64_t)0; //20000us = 20ms = 50hz
+    }
+
 }
 
 int main(int argc, char **argv)
