@@ -137,6 +137,10 @@ void updateStepperGeneral(char* data, int arraySize){
 
         stepper->ignoreTargetPos = isPosNaN;
 
+        if (velocity < 0) {
+            velocity *= -1;
+        }
+
         stepper->stepInterval = 1000000.0 / (totalStepsPerRev * velocity);
 
         xSemaphoreGive(*semaphore);
