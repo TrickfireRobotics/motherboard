@@ -267,20 +267,7 @@ void updateStepperPWM(char* data, int arraySize){
 
 }
 
-//TODO finish this in the future
-void updateStepperLIGHT(char* data, int arraySize){
-    printf("LIGHT\n");
 
-    char lightType = data[6];
-    int state = data[8] - '0';
-
-    printf("lightType %c\n", lightType);
-    printf("state%d\n", state);
-
-    //update the light directly here via the i2c
-    
-
-}
 
 /**
  * Sends data to the host by handling the "getmbd..." command

@@ -43,7 +43,7 @@ void updateStepperGeneral(char *data, int arraySize);
 void updateStepperConfig(char *data, int arraySize);
 void updateStepperPower(char *data, int arraySize);
 void updateStepperPWM(char *data, int arraySize);
-void updateStepperLIGHT(char *data, int arraySize);
+//void updateStepperLIGHT(char *data, int arraySize);
 void sendMBDeviceData(char *data, int arraySize);
 void sendMBDebugDeviceData(char *data, int arraySize);
 

@@ -111,6 +111,31 @@ void usbTask(void *params)
     }
 }
 
+
+//TODO finish this in the future
+void updateStepperLIGHT(char* data, int arraySize){
+    printf("LIGHT\n");
+
+    char lightType = data[6];
+    int state = data[8] - '0';
+
+    printf("lightType %c\n", lightType);
+    printf("state%d\n", state);
+
+    //update the light directly here via the i2c
+
+    if (lightType == 'r') {
+        i2cSetPin(EXPANDER4_ADDR, LED_RED, state);
+    }
+    else if (lightType == 'g') {
+        i2cSetPin(EXPANDER4_ADDR, LED_GREEN, state);
+    }
+    else if (lightType == 'b') {
+        i2cSetPin(EXPANDER4_ADDR, LED_BLUE, state);
+    }
+
+}
+
 // light task
 void lightTask(void *params)
 {

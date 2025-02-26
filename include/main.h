@@ -182,6 +182,7 @@ const uint8_t pwmPins[NUM_SERVOS] = {
     PWM5,
     PWM6};
 
+
 // ===== Task priorities =====
 // smaller number = lower priority
 // idle task = 0 priority
@@ -236,6 +237,8 @@ void usbTask(void *params);
 void lightTask(void *params);
 void stepperMotorTask(void *params);
 void pwmServoTask(void *params);
+
+void updateStepperLIGHT(char *data, int arraySize);
 
 void i2cSetPin(uint8_t expanderAddress, uint8_t pinNumber, bool value);
 
